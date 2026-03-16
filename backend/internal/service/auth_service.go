@@ -60,6 +60,11 @@ func (s *AuthService) Login(req *LoginRequest) (*LoginResponse, error) {
 		return nil, errors.New("生成token失败")
 	}
 
+	// 保存token到数据库
+	if err := s.userRepo.UpdateToken(user.ID, token); err != nil {
+		return nil, errors.New("保存token失败")
+	}
+
 	return &LoginResponse{
 		Token: token,
 		User: &UserInfo{
@@ -108,7 +113,7 @@ func (s *AuthService) GetUserByID(id uint) (*UserInfo, error) {
 
 // generateToken 生成简单 token
 func (s *AuthService) generateToken(user *model.User) (string, error) {
-	// 简单实现：使用用户ID+用户名生成token
+	// 简单实现：使用用户ID+用户名+密码生成token
 	// 生产环境应使用 JWT
 	hash, err := bcrypt.GenerateFromPassword([]byte(user.Username+user.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -117,11 +122,14 @@ func (s *AuthService) generateToken(user *model.User) (string, error) {
 	return string(hash), nil
 }
 
-// ValidateToken 验证 token (简化版本)
+// ValidateToken 验证 token
 func (s *AuthService) ValidateToken(token string) (uint, error) {
-	// 简化实现：直接返回用户ID 1
-	// 生产环境应使用 JWT 验证
-	return 1, nil
+	// 根据token查找用户
+	user, err := s.userRepo.FindByToken(token)
+	if err != nil {
+		return 0, errors.New("无效的token")
+	}
+	return user.ID, nil
 }
 
 // HashPassword 生成密码哈希

@@ -32,6 +32,19 @@ func (r *UserRepository) FindByID(id uint) (*model.User, error) {
 	return &user, nil
 }
 
+func (r *UserRepository) FindByToken(token string) (*model.User, error) {
+	var user model.User
+	err := r.db.Where("token = ?", token).First(&user).Error
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
 func (r *UserRepository) UpdatePassword(id uint, hashedPassword string) error {
 	return r.db.Model(&model.User{}).Where("id = ?", id).Update("password", hashedPassword).Error
+}
+
+func (r *UserRepository) UpdateToken(id uint, token string) error {
+	return r.db.Model(&model.User{}).Where("id = ?", id).Update("token", token).Error
 }
