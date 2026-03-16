@@ -180,6 +180,82 @@
         </el-card>
       </template>
 
+      <!-- 30分钟内磁盘平均写入值 -->
+      <el-card class="section-card" v-if="diskWriteTableData.length > 0">
+        <template #header>
+          <span class="section-title">30分钟内磁盘平均写入值</span>
+        </template>
+        <el-table :data="diskWriteTableData" stripe border size="small">
+          <el-table-column prop="instance" label="节点" width="150" />
+          <el-table-column prop="device" label="设备" width="150" />
+          <el-table-column prop="valueFormatted" label="值" width="150" />
+          <el-table-column label="状态" width="100">
+            <template #default="{ row }">
+              <span :class="row.status === 'normal' ? 'status-normal' : 'status-warning'">
+                {{ row.status === 'normal' ? '正常' : '告警' }}
+              </span>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-card>
+
+      <!-- 30分钟内磁盘平均读取值 -->
+      <el-card class="section-card" v-if="diskReadTableData.length > 0">
+        <template #header>
+          <span class="section-title">30分钟内磁盘平均读取值</span>
+        </template>
+        <el-table :data="diskReadTableData" stripe border size="small">
+          <el-table-column prop="instance" label="节点" width="150" />
+          <el-table-column prop="device" label="设备" width="150" />
+          <el-table-column prop="valueFormatted" label="值" width="150" />
+          <el-table-column label="状态" width="100">
+            <template #default="{ row }">
+              <span :class="row.status === 'normal' ? 'status-normal' : 'status-warning'">
+                {{ row.status === 'normal' ? '正常' : '告警' }}
+              </span>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-card>
+
+      <!-- 30分钟内上传速率 -->
+      <el-card class="section-card" v-if="networkUploadTableData.length > 0">
+        <template #header>
+          <span class="section-title">30分钟内上传速率</span>
+        </template>
+        <el-table :data="networkUploadTableData" stripe border size="small">
+          <el-table-column prop="instance" label="节点" width="150" />
+          <el-table-column prop="device" label="设备" width="150" />
+          <el-table-column prop="valueFormatted" label="值" width="150" />
+          <el-table-column label="状态" width="100">
+            <template #default="{ row }">
+              <span :class="row.status === 'normal' ? 'status-normal' : 'status-warning'">
+                {{ row.status === 'normal' ? '正常' : '告警' }}
+              </span>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-card>
+
+      <!-- 30分钟内下载速率 -->
+      <el-card class="section-card" v-if="networkDownloadTableData.length > 0">
+        <template #header>
+          <span class="section-title">30分钟内下载速率</span>
+        </template>
+        <el-table :data="networkDownloadTableData" stripe border size="small">
+          <el-table-column prop="instance" label="节点" width="150" />
+          <el-table-column prop="device" label="设备" width="150" />
+          <el-table-column prop="valueFormatted" label="值" width="150" />
+          <el-table-column label="状态" width="100">
+            <template #default="{ row }">
+              <span :class="row.status === 'normal' ? 'status-normal' : 'status-warning'">
+                {{ row.status === 'normal' ? '正常' : '告警' }}
+              </span>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-card>
+
       <!-- 进程CPU使用率Top5 -->
       <el-card class="section-card" v-if="processCPUTableData.length > 0">
         <template #header>
@@ -734,7 +810,17 @@ const processMemTableData = computed(() => {
   })
 })
 
-// ==================== 其他分组详情 ====================
+// ==================== 磁盘IO和网络IO相关表格 ====================
+
+// 格式化速率值为人类可读格式 (Bytes/s -> KB/s, MB/s, GB/s)
+const formatRateToHuman = (bytesPerSec: number): string => {
+  if (!bytesPerSec || isNaN(bytesPerSec)) return '-'
+  if (bytesPerSec === 0) return '0 B/s'
+  const units = ['B/s', 'KB/s', 'MB/s', 'GB/s', 'TB/s']
+  const k = 1024
+  const i = Math.floor(Math.log(Math.abs(bytesPerSec)) / Math.log(k))
+  return parseFloat((bytesPerSec / Math.pow(k, i)).toFixed(2)) + ' ' + units[i]
+}
 
 // 判断是否为磁盘IO分组
 const isDiskIOGroup = (groupName: string): boolean => {
@@ -747,6 +833,84 @@ const isNetworkIOGroup = (groupName: string): boolean => {
   const lower = groupName.toLowerCase()
   return lower.includes('网络io') || lower.includes('network io') || lower.includes('networkio')
 }
+
+// 磁盘平均写入值表格数据
+const diskWriteTableData = computed(() => {
+  const diskWriteItems = items.value.filter(i => 
+    isDiskIOGroup(i.group_name) && 
+    (i.rule_name.includes('写入') || i.rule_name.toLowerCase().includes('write'))
+  )
+  
+  return diskWriteItems.map(item => {
+    const labels = parseLabels(item.labels)
+    return {
+      instance: stripPort(item.instance),
+      device: labels.device || labels.mountpoint || '-',
+      value: item.value,
+      valueFormatted: formatRateToHuman(item.value),
+      status: item.status
+    }
+  })
+})
+
+// 磁盘平均读取值表格数据
+const diskReadTableData = computed(() => {
+  const diskReadItems = items.value.filter(i => 
+    isDiskIOGroup(i.group_name) && 
+    (i.rule_name.includes('读取') || i.rule_name.toLowerCase().includes('read'))
+  )
+  
+  return diskReadItems.map(item => {
+    const labels = parseLabels(item.labels)
+    return {
+      instance: stripPort(item.instance),
+      device: labels.device || labels.mountpoint || '-',
+      value: item.value,
+      valueFormatted: formatRateToHuman(item.value),
+      status: item.status
+    }
+  })
+})
+
+// 上传速率表格数据
+const networkUploadTableData = computed(() => {
+  const uploadItems = items.value.filter(i => 
+    isNetworkIOGroup(i.group_name) && 
+    (i.rule_name.includes('上传') || i.rule_name.toLowerCase().includes('upload') || i.rule_name.toLowerCase().includes('transmit'))
+  )
+  
+  return uploadItems.map(item => {
+    const labels = parseLabels(item.labels)
+    return {
+      instance: stripPort(item.instance),
+      device: labels.device || labels.interface || labels.if || '-',
+      value: item.value,
+      valueFormatted: formatRateToHuman(item.value),
+      status: item.status
+    }
+  })
+})
+
+// 下载速率表格数据
+const networkDownloadTableData = computed(() => {
+  const downloadItems = items.value.filter(i => 
+    isNetworkIOGroup(i.group_name) && 
+    (i.rule_name.includes('下载') || i.rule_name.toLowerCase().includes('download') || i.rule_name.toLowerCase().includes('receive'))
+  )
+  
+  return downloadItems.map(item => {
+    const labels = parseLabels(item.labels)
+    return {
+      instance: stripPort(item.instance),
+      device: labels.device || labels.interface || labels.if || '-',
+      value: item.value,
+      valueFormatted: formatRateToHuman(item.value),
+      status: item.status
+    }
+  })
+})
+
+// ==================== 其他分组详情 ====================
 
 // 其他分组详情（排除已特殊处理的）
 const otherGroupDetails = computed(() => {
