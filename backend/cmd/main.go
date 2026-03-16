@@ -7,7 +7,6 @@ import (
 	"ops-inspection/internal/model"
 	"ops-inspection/internal/router"
 	"os"
-	"os/exec"
 
 	"github.com/gin-gonic/gin"
 )

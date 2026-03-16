@@ -1,15 +1,11 @@
 package prometheus
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
 	"time"
-
-	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
-	"github.com/prometheus/common/model"
 )
 
 // QueryResult 查询结果
@@ -68,7 +64,7 @@ func (c *Client) Query(address, token, query string) ([]QueryResult, error) {
 	var promResp struct {
 		Status string `json:"status"`
 		Data   struct {
-			ResultType model.ValueType `json:"resultType"`
+			ResultType string `json:"resultType"`
 			Result     []struct {
 				Metric map[string]string `json:"metric"`
 				Value  []interface{}     `json:"value"`

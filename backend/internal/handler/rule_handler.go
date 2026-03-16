@@ -184,7 +184,7 @@ func (h *RuleHandler) Test(c *gin.Context) {
 		return
 	}
 
-	projectID, err := strconv.ParseUint(projectIDStr, 10, 32)
+	_, err = strconv.ParseUint(projectIDStr, 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的项目ID"})
 		return

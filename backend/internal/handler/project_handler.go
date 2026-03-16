@@ -156,7 +156,7 @@ func (h *ProjectHandler) TestConnection(c *gin.Context) {
 		return
 	}
 
-	project, err := h.service.GetByID(uint(id))
+	_, err = h.service.GetByID(uint(id))
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "项目不存在"})
 		return
