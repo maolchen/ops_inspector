@@ -1,0 +1,37 @@
+package repository
+
+import (
+	"ops-inspection/internal/model"
+
+	"gorm.io/gorm"
+)
+
+type UserRepository struct {
+	db *gorm.DB
+}
+
+func NewUserRepository(db *gorm.DB) *UserRepository {
+	return &UserRepository{db: db}
+}
+
+func (r *UserRepository) FindByUsername(username string) (*model.User, error) {
+	var user model.User
+	err := r.db.Where("username = ?", username).First(&user).Error
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *UserRepository) FindByID(id uint) (*model.User, error) {
+	var user model.User
+	err := r.db.First(&user, id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *UserRepository) UpdatePassword(id uint, hashedPassword string) error {
+	return r.db.Model(&model.User{}).Where("id = ?", id).Update("password", hashedPassword).Error
+}
