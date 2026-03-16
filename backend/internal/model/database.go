@@ -5,6 +5,7 @@ import (
 	"ops-inspection/internal/config"
 
 	"github.com/glebarez/sqlite" // 纯 Go 实现，无需 CGO
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -83,11 +84,16 @@ func initDefaultUser() error {
 		return nil
 	}
 
-	// 默认用户 admin/admin (密码会在实际运行时由 bcrypt 生成)
-	// 这里使用预生成的 bcrypt hash: admin
+	// 使用 bcrypt 动态生成密码哈希
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte("admin"), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	// 默认用户 admin/admin
 	defaultUser := User{
 		Username:    "admin",
-		Password:    "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy", // "admin"
+		Password:    string(hashedPassword),
 		DisplayName: "系统管理员",
 	}
 
