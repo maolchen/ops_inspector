@@ -5,7 +5,10 @@ import (
 	"log"
 	"ops-inspection/internal/config"
 	"ops-inspection/internal/model"
+	"ops-inspection/internal/repository"
 	"ops-inspection/internal/router"
+	"ops-inspection/internal/service"
+	"ops-inspection/pkg/scheduler"
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -44,6 +47,17 @@ func main() {
 	if err := model.InitDB(&config.GlobalConfig.Database); err != nil {
 		log.Fatal("初始化数据库失败:", err)
 	}
+
+	// 初始化定时清理任务
+	reportRepo := repository.NewReportRepository(model.DB)
+	ruleRepo := repository.NewRuleRepository(model.DB)
+	projectRepo := repository.NewProjectRepository(model.DB)
+	prometheusService := service.NewPrometheusService()
+	inspectionService := service.NewInspectionService(reportRepo, ruleRepo, projectRepo, prometheusService)
+	
+	cleanupScheduler := scheduler.NewCleanupScheduler(inspectionService)
+	cleanupScheduler.Start()
+	defer cleanupScheduler.Stop()
 
 	// 设置运行模式
 	gin.SetMode(config.GlobalConfig.Server.Mode)

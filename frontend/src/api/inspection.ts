@@ -33,8 +33,28 @@ export interface InspectionItem {
   created_at: string
 }
 
+export interface ListParams {
+  keyword?: string
+  page?: number
+  page_size?: number
+}
+
+export interface ListResult {
+  total: number
+  page: number
+  page_size: number
+  list: InspectionReport[]
+}
+
 export const inspectionApi = {
-  list: () => api.get<any, { data: InspectionReport[] }>('/inspections'),
+  list: (params?: ListParams) => {
+    const queryParams = new URLSearchParams()
+    if (params?.keyword) queryParams.append('keyword', params.keyword)
+    if (params?.page) queryParams.append('page', params.page.toString())
+    if (params?.page_size) queryParams.append('page_size', params.page_size.toString())
+    const query = queryParams.toString()
+    return api.get<any, { data: ListResult }>(`/inspections${query ? '?' + query : ''}`)
+  },
 
   get: (id: number) => api.get<any, { data: { report: InspectionReport; items: InspectionItem[] } }>(`/inspections/${id}`),
 
@@ -43,4 +63,19 @@ export const inspectionApi = {
 
   updateSummary: (id: number, summary: string, remark: string) =>
     api.put(`/inspections/${id}/summary`, { summary, remark })
+}
+
+// 系统配置API
+export interface SystemConfig {
+  report_retention_days: string
+}
+
+export const systemApi = {
+  getConfigs: () => api.get<any, { data: SystemConfig }>('/system/configs'),
+  
+  updateConfig: (key: string, value: string) => 
+    api.put('/system/configs', { key, value }),
+  
+  cleanupReports: (days: number) => 
+    api.post<any, { message: string; count: number }>(`/system/cleanup?days=${days}`)
 }

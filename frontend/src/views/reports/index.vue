@@ -4,6 +4,22 @@
       <h2>历史报告</h2>
     </div>
 
+    <!-- 搜索栏 -->
+    <div class="search-bar">
+      <el-input
+        v-model="keyword"
+        placeholder="搜索项目名称、巡检人"
+        clearable
+        style="width: 300px"
+        @keyup.enter="handleSearch"
+        @clear="handleSearch"
+      >
+        <template #append>
+          <el-button :icon="Search" @click="handleSearch" />
+        </template>
+      </el-input>
+    </div>
+
     <el-table :data="reports" v-loading="loading" stripe>
       <el-table-column prop="project_name" label="项目名称" width="200" />
       <el-table-column prop="inspector" label="巡检人" width="120" />
@@ -39,6 +55,19 @@
         </template>
       </el-table-column>
     </el-table>
+
+    <!-- 分页 -->
+    <div class="pagination-container">
+      <el-pagination
+        v-model:current-page="currentPage"
+        v-model:page-size="pageSize"
+        :page-sizes="[10, 20, 50, 100]"
+        :total="total"
+        layout="total, sizes, prev, pager, next, jumper"
+        @size-change="handleSizeChange"
+        @current-change="handlePageChange"
+      />
+    </div>
   </div>
 </template>
 
@@ -46,20 +75,46 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Search } from '@element-plus/icons-vue'
 import { inspectionApi, type InspectionReport } from '../../api/inspection'
 
 const router = useRouter()
 const loading = ref(false)
 const reports = ref<InspectionReport[]>([])
+const keyword = ref('')
+const currentPage = ref(1)
+const pageSize = ref(20)
+const total = ref(0)
 
 const loadReports = async () => {
   loading.value = true
   try {
-    const res = await inspectionApi.list()
-    reports.value = res.data
+    const res = await inspectionApi.list({
+      keyword: keyword.value || undefined,
+      page: currentPage.value,
+      page_size: pageSize.value
+    })
+    reports.value = res.data.list
+    total.value = res.data.total
+  } catch (error) {
+    ElMessage.error('加载失败')
   } finally {
     loading.value = false
   }
+}
+
+const handleSearch = () => {
+  currentPage.value = 1
+  loadReports()
+}
+
+const handleSizeChange = () => {
+  currentPage.value = 1
+  loadReports()
+}
+
+const handlePageChange = () => {
+  loadReports()
 }
 
 const viewDetail = (row: InspectionReport) => {
@@ -95,5 +150,15 @@ onMounted(() => {
 
 .page-header h2 {
   margin: 0;
+}
+
+.search-bar {
+  margin-bottom: 20px;
+}
+
+.pagination-container {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
 }
 </style>

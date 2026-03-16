@@ -1226,28 +1226,41 @@ const handleExport = async () => {
   if (!element) return
   
   try {
-    const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: '#fff' })
-    const imgWidth = 210
-    const pageHeight = 297
+    // 优化PDF导出：降低分辨率减小文件大小
+    const canvas = await html2canvas(element, { 
+      scale: 1.5,  // 降低缩放比例，减小文件大小
+      useCORS: true, 
+      backgroundColor: '#fff',
+      logging: false,
+      imageTimeout: 15000
+    })
+    
+    const imgWidth = 210  // A4宽度（mm）
+    const pageHeight = 297  // A4高度（mm）
     const imgHeight = (canvas.height * imgWidth) / canvas.width
+    
+    // 使用JPEG格式并设置质量，大幅减小文件大小
+    const imgData = canvas.toDataURL('image/jpeg', 0.7)
+    
     const pdf = new jsPDF('p', 'mm', 'a4')
     
     let heightLeft = imgHeight
     let position = 0
     
-    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, imgWidth, imgHeight)
+    pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
     heightLeft -= pageHeight
     
     while (heightLeft > 0) {
       position = heightLeft - imgHeight
       pdf.addPage()
-      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, imgWidth, imgHeight)
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
       heightLeft -= pageHeight
     }
     
     pdf.save(`巡检报告_${report.value?.project_name}_${new Date().toISOString().slice(0, 10)}.pdf`)
     ElMessage.success('导出成功')
   } catch (error) {
+    console.error('PDF导出失败:', error)
     ElMessage.error('导出失败')
   }
 }

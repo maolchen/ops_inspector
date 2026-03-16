@@ -40,6 +40,7 @@ func SetupRouter() *gin.Engine {
 	ruleHandler := handler.NewRuleHandler(ruleService, prometheusService)
 	inspectionHandler := handler.NewInspectionHandler(inspectionService)
 	authHandler := handler.NewAuthHandler(authService)
+	systemHandler := handler.NewSystemHandler(inspectionService)
 
 	// API 路由组
 	api := r.Group("/api")
@@ -88,6 +89,11 @@ func SetupRouter() *gin.Engine {
 			protected.GET("/inspections/:id", inspectionHandler.Get)
 			protected.POST("/inspections/start", inspectionHandler.Start)
 			protected.PUT("/inspections/:id/summary", inspectionHandler.UpdateSummary)
+
+			// 系统配置
+			protected.GET("/system/configs", systemHandler.GetConfigs)
+			protected.PUT("/system/configs", systemHandler.UpdateConfig)
+			protected.POST("/system/cleanup", systemHandler.CleanupReports)
 		}
 	}
 

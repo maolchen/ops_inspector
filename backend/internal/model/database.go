@@ -3,6 +3,8 @@ package model
 import (
 	"fmt"
 	"ops-inspection/internal/config"
+	"os"
+	"path/filepath"
 
 	"github.com/glebarez/sqlite" // 纯 Go 实现，无需 CGO
 	"golang.org/x/crypto/bcrypt"
@@ -22,8 +24,20 @@ func InitDB(cfg *config.DatabaseConfig) error {
 		logLevel = logger.Warn
 	}
 
-	// 连接数据库 - 使用共享缓存内存数据库
-	dsn := "file:inspection.db?mode=memory&cache=shared"
+	// 使用配置文件中的数据库路径，支持持久化
+	dsn := cfg.Path
+	if dsn == "" {
+		dsn = "./data/inspection.db"
+	}
+
+	// 确保数据目录存在
+	dbDir := filepath.Dir(dsn)
+	if dbDir != "" && dbDir != "." {
+		if err := os.MkdirAll(dbDir, 0755); err != nil {
+			return fmt.Errorf("failed to create database directory: %w", err)
+		}
+	}
+
 	DB, err = gorm.Open(sqlite.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logLevel),
 	})
@@ -53,6 +67,7 @@ func autoMigrate() error {
 		&Rule{},
 		&InspectionReport{},
 		&InspectionItem{},
+		&SystemConfig{},
 	)
 }
 
@@ -70,6 +85,11 @@ func initDefaultData() error {
 
 	// 初始化默认规则
 	if err := initDefaultRules(); err != nil {
+		return err
+	}
+
+	// 初始化系统配置
+	if err := InitDefaultConfigs(); err != nil {
 		return err
 	}
 

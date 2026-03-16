@@ -1,6 +1,7 @@
 package service
 
 import (
+	"strconv"
 	"time"
 
 	"ops-inspection/internal/model"
@@ -8,10 +9,10 @@ import (
 )
 
 type InspectionService struct {
-	reportRepo *repository.ReportRepository
-	ruleRepo   *repository.RuleRepository
+	reportRepo  *repository.ReportRepository
+	ruleRepo    *repository.RuleRepository
 	projectRepo *repository.ProjectRepository
-	prometheus *PrometheusService
+	prometheus  *PrometheusService
 }
 
 func NewInspectionService(
@@ -21,10 +22,10 @@ func NewInspectionService(
 	prometheus *PrometheusService,
 ) *InspectionService {
 	return &InspectionService{
-		reportRepo: reportRepo,
-		ruleRepo:   ruleRepo,
+		reportRepo:  reportRepo,
+		ruleRepo:    ruleRepo,
 		projectRepo: projectRepo,
-		prometheus: prometheus,
+		prometheus:  prometheus,
 	}
 }
 
@@ -189,6 +190,15 @@ func (s *InspectionService) GetAllReports() ([]model.InspectionReport, error) {
 	return s.reportRepo.GetAll()
 }
 
+// GetReportList 分页获取报告列表
+func (s *InspectionService) GetReportList(keyword string, page, pageSize int) (*repository.ListResult, error) {
+	return s.reportRepo.GetList(repository.ListParams{
+		Keyword:  keyword,
+		Page:     page,
+		PageSize: pageSize,
+	})
+}
+
 func (s *InspectionService) UpdateSummary(id uint, summary, remark string) error {
 	report, err := s.reportRepo.GetByID(id)
 	if err != nil {
@@ -198,4 +208,21 @@ func (s *InspectionService) UpdateSummary(id uint, summary, remark string) error
 	report.Summary = summary
 	report.Remark = remark
 	return s.reportRepo.Update(report)
+}
+
+// CleanupOldReports 清理过期报告
+func (s *InspectionService) CleanupOldReports(days int) (int64, error) {
+	return s.reportRepo.DeleteOlderThan(days)
+}
+
+// ParseInt 辅助函数：解析整数
+func ParseInt(s string, defaultValue int) int {
+	if s == "" {
+		return defaultValue
+	}
+	val, err := strconv.Atoi(s)
+	if err != nil {
+		return defaultValue
+	}
+	return val
 }

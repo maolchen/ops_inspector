@@ -59,15 +59,24 @@ func (h *InspectionHandler) Get(c *gin.Context) {
 	})
 }
 
-// List 获取巡检报告列表
+// List 获取巡检报告列表（支持搜索和分页）
 func (h *InspectionHandler) List(c *gin.Context) {
-	reports, err := h.service.GetAllReports()
+	keyword := c.Query("keyword")
+	page := service.ParseInt(c.Query("page"), 1)
+	pageSize := service.ParseInt(c.Query("page_size"), 20)
+
+	// 限制每页最大数量
+	if pageSize > 100 {
+		pageSize = 100
+	}
+
+	result, err := h.service.GetReportList(keyword, page, pageSize)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": reports})
+	c.JSON(http.StatusOK, gin.H{"data": result})
 }
 
 // UpdateSummary 更新巡检总结

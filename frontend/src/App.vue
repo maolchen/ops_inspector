@@ -35,6 +35,10 @@
               <el-icon><Document /></el-icon>
               <span>历史报告</span>
             </el-menu-item>
+            <el-menu-item index="/settings">
+              <el-icon><Tools /></el-icon>
+              <span>系统设置</span>
+            </el-menu-item>
           </el-menu>
           
           <!-- 底部用户信息 -->
@@ -71,7 +75,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
-import { Folder, Setting, Search, Document, SwitchButton } from '@element-plus/icons-vue'
+import { Folder, Setting, Search, Document, SwitchButton, Tools } from '@element-plus/icons-vue'
 import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
 import { useAuthStore } from './store/auth'
 
