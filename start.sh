@@ -1,2 +1,3 @@
 #!/bin/bash
-PORT=5000 ./server
+export PORT=5000
+./server
