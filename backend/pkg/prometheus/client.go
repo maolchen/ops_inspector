@@ -3,6 +3,7 @@ package prometheus
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"time"
@@ -31,9 +32,13 @@ func NewClient() *Client {
 
 // Query 即时查询
 func (c *Client) Query(address, token, query string) ([]QueryResult, error) {
+	// 打印查询日志
+	log.Printf("[Prometheus Query] address=%s, query=%s", address, query)
+
 	// 构建查询 URL
 	u, err := url.Parse(address)
 	if err != nil {
+		log.Printf("[Prometheus Query Error] parse url failed: %v", err)
 		return nil, err
 	}
 
@@ -45,6 +50,7 @@ func (c *Client) Query(address, token, query string) ([]QueryResult, error) {
 	// 创建请求
 	req, err := http.NewRequest("GET", u.String(), nil)
 	if err != nil {
+		log.Printf("[Prometheus Query Error] create request failed: %v", err)
 		return nil, err
 	}
 
@@ -56,6 +62,7 @@ func (c *Client) Query(address, token, query string) ([]QueryResult, error) {
 	// 发送请求
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		log.Printf("[Prometheus Query Error] send request failed: %v", err)
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -74,10 +81,12 @@ func (c *Client) Query(address, token, query string) ([]QueryResult, error) {
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&promResp); err != nil {
+		log.Printf("[Prometheus Query Error] decode response failed: %v", err)
 		return nil, err
 	}
 
 	if promResp.Status != "success" {
+		log.Printf("[Prometheus Query Error] query failed: %s", promResp.Error)
 		return nil, fmt.Errorf("prometheus query failed: %s", promResp.Error)
 	}
 
@@ -109,6 +118,12 @@ func (c *Client) Query(address, token, query string) ([]QueryResult, error) {
 			Value:    value,
 			Labels:   string(labelsJSON),
 		})
+	}
+
+	// 打印结果日志
+	log.Printf("[Prometheus Query Result] query=%s, count=%d", query, len(results))
+	for i, r := range results {
+		log.Printf("[Prometheus Query Result] [%d] instance=%s, value=%.2f, labels=%s", i, r.Instance, r.Value, r.Labels)
 	}
 
 	return results, nil

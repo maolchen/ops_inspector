@@ -69,7 +69,7 @@
         <template #header>
           <span class="section-title">基础资源详情</span>
         </template>
-        <el-table :data="basicResourceData" stripe border size="small" :cell-class-name="getBasicTableCellClass">
+        <el-table :data="basicResourceData" stripe border size="small" :span-method="basicResourceSpanMethod" :cell-class-name="getBasicTableCellClass">
           <el-table-column prop="ip" label="IP地址" width="130" fixed="left" />
           <el-table-column prop="cpuCores" label="CPU核心数" width="100" />
           <el-table-column prop="cpuUsage" label="CPU使用率" width="110" />
@@ -84,44 +84,6 @@
           <el-table-column prop="diskUsage" label="磁盘使用率" width="110" />
           <el-table-column prop="tcpConn" label="TCP连接数" width="100" />
           <el-table-column prop="tcpTw" label="TCP_TW数" width="100" />
-        </el-table>
-      </el-card>
-
-      <!-- 磁盘IO详情 -->
-      <el-card class="section-card" v-if="diskIOGroupedData.length > 0">
-        <template #header>
-          <span class="section-title">磁盘IO详情</span>
-        </template>
-        <el-table :data="diskIOGroupedData" stripe border size="small" :cell-class-name="getIOStatusCellClass">
-          <el-table-column prop="instance" label="节点" width="150" />
-          <el-table-column prop="device" label="设备" width="150" />
-          <el-table-column prop="value" label="值" width="120" />
-          <el-table-column prop="status" label="状态" width="100">
-            <template #default="{ row }">
-              <span :class="row.status === '正常' ? 'status-normal' : 'status-warning'">
-                {{ row.status }}
-              </span>
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-card>
-
-      <!-- 网络IO详情 -->
-      <el-card class="section-card" v-if="networkIOGroupedData.length > 0">
-        <template #header>
-          <span class="section-title">网络IO详情</span>
-        </template>
-        <el-table :data="networkIOGroupedData" stripe border size="small" :cell-class-name="getIOStatusCellClass">
-          <el-table-column prop="instance" label="节点" width="150" />
-          <el-table-column prop="device" label="设备" width="150" />
-          <el-table-column prop="value" label="值" width="120" />
-          <el-table-column prop="status" label="状态" width="100">
-            <template #default="{ row }">
-              <span :class="row.status === '正常' ? 'status-normal' : 'status-warning'">
-                {{ row.status }}
-              </span>
-            </template>
-          </el-table-column>
         </el-table>
       </el-card>
 
@@ -155,10 +117,15 @@
         </template>
         <el-table :data="k8sPodTableData" stripe border size="small" :cell-class-name="getK8sStatusCellClass">
           <el-table-column prop="namespace" label="命名空间" width="150" />
-          <el-table-column prop="pod" label="Pod名称" width="250" />
-          <el-table-column prop="status" label="状态" width="120">
+          <el-table-column prop="pod" label="Pod名" width="300" />
+          <el-table-column prop="value" label="运行状态" width="100">
             <template #default="{ row }">
-              <span :class="getPodStatusClass(row.status)">
+              {{ row.value }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="status" label="状态" width="100">
+            <template #default="{ row }">
+              <span :class="row.status === '正常' ? 'status-normal' : 'status-critical'">
                 {{ row.status }}
               </span>
             </template>
@@ -196,9 +163,9 @@
           <span class="section-title">K8S PVC使用率</span>
         </template>
         <el-table :data="k8sPVCTableData" stripe border size="small" :cell-class-name="getK8sStatusCellClass">
+          <el-table-column prop="pvc" label="PVC名称" width="300" />
           <el-table-column prop="namespace" label="命名空间" width="150" />
-          <el-table-column prop="pvc" label="PVC名称" width="200" />
-          <el-table-column prop="usedPercent" label="使用率" width="100">
+          <el-table-column prop="usedPercent" label="PVC使用率" width="120">
             <template #default="{ row }">
               <span :class="getUsageStatusClass(row.usedPercent)">
                 {{ row.usedPercent }}%
@@ -207,7 +174,7 @@
           </el-table-column>
           <el-table-column prop="status" label="状态" width="100">
             <template #default="{ row }">
-              <span :class="row.status === '正常' ? 'status-normal' : 'status-warning'">
+              <span :class="row.status === '正常' ? 'status-normal' : 'status-critical'">
                 {{ row.status }}
               </span>
             </template>
@@ -221,13 +188,8 @@
           <span class="section-title">进程CPU使用率top5</span>
         </template>
         <el-table :data="processCPUTableData" stripe border size="small">
-          <el-table-column prop="metricName" label="指标名称" width="200">
-            <template #default>
-              进程CPU使用率top5
-            </template>
-          </el-table-column>
-          <el-table-column prop="instance" label="节点" width="180" />
           <el-table-column prop="processName" label="进程名" width="200" />
+          <el-table-column prop="instance" label="所在机器" width="180" />
           <el-table-column prop="value" label="值" width="120" />
           <el-table-column prop="status" label="状态" width="100">
             <template #default="{ row }">
@@ -245,13 +207,8 @@
           <span class="section-title">进程内存使用率top5</span>
         </template>
         <el-table :data="processMemTableData" stripe border size="small">
-          <el-table-column prop="metricName" label="指标名称" width="200">
-            <template #default>
-              进程内存使用率top5
-            </template>
-          </el-table-column>
-          <el-table-column prop="instance" label="节点" width="180" />
           <el-table-column prop="processName" label="进程名" width="200" />
+          <el-table-column prop="instance" label="所在机器" width="180" />
           <el-table-column prop="value" label="值" width="120" />
           <el-table-column prop="status" label="状态" width="100">
             <template #default="{ row }">
@@ -444,7 +401,8 @@ const isBasicResourceGroup = (groupName: string): boolean => {
          lower.includes('基础')
 }
 
-// 基础资源详情表格数据
+// 基础资源详情表格数据 - 支持单元格合并
+// 非磁盘数据合并为一行，磁盘数据按挂载点分行
 const basicResourceData = computed(() => {
   // 只取基础资源分组且show_in_table的数据
   const basicItems = items.value.filter(i => isBasicResourceGroup(i.group_name) && i.show_in_table)
@@ -486,21 +444,42 @@ const basicResourceData = computed(() => {
     }
   })
   
-  // 生成表格行数据
+  // 生成表格行数据 - 每个挂载点一行，非磁盘数据需要在第一行显示
   const result: any[] = []
+  
+  // 记录每个IP的起始行索引和行数，用于单元格合并
+  const ipRowInfo: Record<string, { startIndex: number; rowCount: number }> = {}
+  let currentIndex = 0
   
   Object.keys(ipDataMap).forEach(ip => {
     const data = ipDataMap[ip]
     const mountpoints = Array.from(ipMountpoints[ip])
     
-    // 如果没有挂载点，添加一行
+    // 记录该IP的起始行
+    ipRowInfo[ip] = { startIndex: currentIndex, rowCount: 0 }
+    
     if (mountpoints.length === 0) {
-      result.push(createBasicRow(ip, data, ''))
+      // 没有挂载点，添加一行
+      result.push(createBasicRow(ip, data, '', true))
+      ipRowInfo[ip].rowCount = 1
+      currentIndex++
     } else {
       // 每个挂载点一行
       mountpoints.forEach((mountpoint, idx) => {
         result.push(createBasicRow(ip, data, mountpoint, idx === 0))
+        ipRowInfo[ip].rowCount++
+        currentIndex++
       })
+    }
+  })
+  
+  // 将合并信息附加到每行数据
+  result.forEach((row, idx) => {
+    const ip = row._ip
+    if (ip && ipRowInfo[ip]) {
+      const info = ipRowInfo[ip]
+      row._rowIndex = idx
+      row._rowSpan = idx === info.startIndex ? info.rowCount : 0
     }
   })
   
@@ -540,6 +519,66 @@ const createBasicRow = (ip: string, data: Record<string, any>, mountpoint: strin
   const tcpTw = getData(['TCP_TW数', 'tcp_tw', 'TCP TimeWait'])
   
   return {
+    _ip: ip, // 保存原始IP用于合并计算
+    _isFirst: isFirst, // 是否是该IP的第一行
+    ip: isFirst ? ip : '', // 非第一行不显示IP
+    mountpoint: mountpoint || '-',
+    cpuCores: isFirst ? (cpuCores ? Math.round(cpuCores.value) : '-') : '',
+    cpuUsage: isFirst ? (cpuUsage ? cpuUsage.value.toFixed(2) + '%' : '-') : '',
+    cpuUsageStatus: isFirst ? (cpuUsage?.status || '') : '',
+    uptime: isFirst ? (uptime ? formatUptime(uptime.value) : '-') : '',
+    load5: isFirst ? (load5 ? load5.value.toFixed(2) : '-') : '',
+    load5Status: isFirst ? (load5?.status || '') : '',
+    memTotal: isFirst ? (memTotal ? formatBytesToHuman(memTotal.value) : '-') : '',
+    memUsed: isFirst ? (memUsed ? formatBytesToHuman(memUsed.value) : '-') : '',
+    memUsage: isFirst ? (memUsage ? memUsage.value.toFixed(2) + '%' : '-') : '',
+    memUsageStatus: isFirst ? (memUsage?.status || '') : '',
+    diskTotal: diskTotal ? formatBytesToHuman(diskTotal.value) : '-',
+    diskUsed: diskUsed ? formatBytesToHuman(diskUsed.value) : '-',
+    diskUsage: diskUsage ? diskUsage.value.toFixed(2) + '%' : '-',
+    diskUsageStatus: diskUsage?.status || '',
+    tcpConn: isFirst ? (tcpConn ? Math.round(tcpConn.value) : '-') : '',
+    tcpTw: isFirst ? (tcpTw ? Math.round(tcpTw.value) : '-') : ''
+  }
+}
+
+// 基础资源表格单元格合并方法
+// 非磁盘列（前8列和后2列）需要合并，磁盘列（mountpoint, diskTotal, diskUsed, diskUsage）不合并
+const basicResourceSpanMethod = ({ row, column, rowIndex, columnIndex }: { row: any; column: any; rowIndex: number; columnIndex: number }) => {
+  // 需要合并的列索引：0-7（IP到内存使用率），11-12（TCP连接数、TCP_TW数）
+  // 不需要合并的列索引：8-10（挂载点、磁盘总量、磁盘使用量、磁盘使用率）
+  const mergeColumns = [0, 1, 2, 3, 4, 5, 6, 7, 12, 13]
+  
+  if (mergeColumns.includes(columnIndex)) {
+    if (row._rowSpan > 0) {
+      return {
+        rowspan: row._rowSpan,
+        colspan: 1
+      }
+    } else {
+      return {
+        rowspan: 0,
+        colspan: 0
+      }
+    }
+  }
+}
+  
+  // 内存相关 - 支持多种规则名称
+  const memTotal = getData(['内存总量', 'memory_total', 'Memory Total', '节点内存'])
+  const memUsed = getData(['内存使用量', 'memory_used', 'Memory Used'])
+  const memUsage = getData(['内存使用率', 'memory_usage', 'Memory Usage'])
+  
+  // 磁盘相关
+  const diskTotal = getData(['磁盘总量', 'disk_total', 'Disk Total'])
+  const diskUsed = getData(['磁盘使用量', 'disk_used', 'Disk Used'])
+  const diskUsage = getData(['磁盘使用率', 'disk_usage', 'Disk Usage'])
+  
+  // 网络相关
+  const tcpConn = getData(['TCP连接数', 'tcp_conn', 'TCP Connections'])
+  const tcpTw = getData(['TCP_TW数', 'tcp_tw', 'TCP TimeWait'])
+  
+  return {
     ip: isFirst ? ip : '', // 非第一行不显示IP，视觉上表示同一服务器
     mountpoint: mountpoint || '-',
     cpuCores: cpuCores ? Math.round(cpuCores.value) : '-',
@@ -560,85 +599,6 @@ const createBasicRow = (ip: string, data: Record<string, any>, mountpoint: strin
     tcpTw: tcpTw ? Math.round(tcpTw.value) : '-'
   }
 }
-
-// 判断是否为磁盘IO分组
-const isDiskIOGroup = (groupName: string): boolean => {
-  const lower = groupName.toLowerCase()
-  return (lower.includes('磁盘') || lower.includes('disk')) && 
-         (lower.includes('io') || lower.includes('读写'))
-}
-
-// 磁盘IO表格数据 - 节点、设备、值、状态
-// 数据来源: 30分钟内磁盘平均读取值、30分钟内磁盘平均写入值
-// 阈值: 100 MB/s，大于阈值告警
-const diskIOGroupedData = computed(() => {
-  const diskItems = items.value.filter(i => 
-    i.rule_name.includes('30分钟内磁盘平均读取值') || 
-    i.rule_name.includes('30分钟内磁盘平均写入值') ||
-    i.rule_name.includes('磁盘平均读取') ||
-    i.rule_name.includes('磁盘平均写入')
-  )
-  
-  const result: Array<{ instance: string; device: string; value: string; status: string }> = []
-  
-  diskItems.forEach(item => {
-    const labels = parseLabels(item.labels)
-    const instance = stripPort(item.instance)
-    const device = labels.device || 'unknown'
-    const valueMB = item.value // 已经是MB/s
-    
-    // 阈值100 MB/s
-    const status = valueMB > 100 ? '异常' : '正常'
-    
-    result.push({
-      instance,
-      device,
-      value: `${valueMB.toFixed(2)} MB/s`,
-      status
-    })
-  })
-  
-  return result
-})
-
-// 判断是否为网络IO分组
-const isNetworkIOGroup = (groupName: string): boolean => {
-  const lower = groupName.toLowerCase()
-  return lower.includes('网络') || lower.includes('network')
-}
-
-// 网络IO表格数据 - 节点、设备、值、状态
-// 数据来源: 30分钟内下载速率、30分钟内上传速率
-// 阈值: 100 MB/s，大于阈值告警
-const networkIOGroupedData = computed(() => {
-  const networkItems = items.value.filter(i => 
-    i.rule_name.includes('30分钟内下载速率') || 
-    i.rule_name.includes('30分钟内上传速率') ||
-    i.rule_name.includes('下载速率') ||
-    i.rule_name.includes('上传速率')
-  )
-  
-  const result: Array<{ instance: string; device: string; value: string; status: string }> = []
-  
-  networkItems.forEach(item => {
-    const labels = parseLabels(item.labels)
-    const instance = stripPort(item.instance)
-    const device = labels.device || 'unknown'
-    const valueMB = item.value // 已经是MB/s
-    
-    // 阈值100 MB/s
-    const status = valueMB > 100 ? '异常' : '正常'
-    
-    result.push({
-      instance,
-      device,
-      value: `${valueMB.toFixed(2)} MB/s`,
-      status
-    })
-  })
-  
-  return result
-})
 
 // 判断是否为K8S分组
 const isK8SGroup = (groupName: string): boolean => {
@@ -677,7 +637,9 @@ const k8sNodeTableData = computed(() => {
 })
 
 // K8S Pod状态表格数据
-// 数据示例: {namespace="monitoring", pod="alertmanager-main-0"} 或 {namespace="monitoring", pod="alertmanager-main-0", phase="Running"}
+// 数据示例: {namespace="cattle-system", pod="rancher-74545784-5wgcf"} 1
+// 表格展示：命名空间、Pod名、运行状态（值）、状态
+// 状态判断：值=1正常(绿色)，值≠1异常(红色)
 const k8sPodTableData = computed(() => {
   const podItems = items.value.filter(i => 
     isK8SGroup(i.group_name) && 
@@ -687,13 +649,11 @@ const k8sPodTableData = computed(() => {
   
   return podItems.map(item => {
     const labels = parseLabels(item.labels)
-    // namespace取namespace标签
-    // pod取pod标签
-    // 状态根据值判断（1=Running, 0=异常）
     return {
       namespace: labels.namespace || 'default',
       pod: labels.pod || stripPort(item.instance),
-      status: labels.phase || (item.value === 1 ? 'Running' : '异常')
+      value: item.value,
+      status: item.value === 1 ? '正常' : '异常'
     }
   })
 })
