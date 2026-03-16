@@ -6,5 +6,5 @@ build = ["pnpm", "install"]
 run = ["pnpm", "dev"]
 
 [deploy]
-build = ["bash", "build.sh"]
-run = ["bash", "start.sh"]
+build = ["bash", "-c", "export GOROOT=/workspace/go && export PATH=$GOROOT/bin:$PATH && bash build.sh"]
+run = ["bash", "-c", "export GOROOT=/workspace/go && export PATH=$GOROOT/bin:$PATH && bash start.sh"]
