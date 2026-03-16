@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "cd frontend && pnpm dev --port 5000 --host",
     "build": "cd frontend && pnpm install && pnpm build",
-    "start": "cd backend && go build -o ../server ./cmd/main.go && PORT=5000 ../server"
+    "start": "PORT=5000 ./server"
   },
   "keywords": ["inspection", "prometheus", "monitoring"],
   "author": "",
