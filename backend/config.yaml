@@ -1,0 +1,14 @@
+server:
+  port: 5001
+  mode: debug
+
+database:
+  type: sqlite
+  path: ./data/inspection.db
+
+prometheus:
+  timeout: 30
+  max_retries: 3
+
+log:
+  level: info
