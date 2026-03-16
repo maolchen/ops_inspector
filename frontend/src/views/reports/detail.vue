@@ -630,6 +630,7 @@ const isK8SGroup = (groupName: string): boolean => {
 }
 
 // K8S节点状态表格数据
+// 数据示例: {node="192.168.0.69"} 值为状态（1=Ready, 0=NotReady）
 const k8sNodeTableData = computed(() => {
   const nodeItems = items.value.filter(i => 
     isK8SGroup(i.group_name) && 
@@ -639,14 +640,17 @@ const k8sNodeTableData = computed(() => {
   
   return nodeItems.map(item => {
     const labels = parseLabels(item.labels)
+    // node取node标签
+    // 状态根据值判断（1=Ready, 0=NotReady）
     return {
-      node: labels.node || labels.kubernetes_node || labels.instance || stripPort(item.instance),
+      node: labels.node || stripPort(item.instance),
       status: item.value === 1 ? 'Ready' : 'NotReady'
     }
   })
 })
 
 // K8S Pod状态表格数据
+// 数据示例: {namespace="monitoring", pod="alertmanager-main-0"} 或 {namespace="monitoring", pod="alertmanager-main-0", phase="Running"}
 const k8sPodTableData = computed(() => {
   const podItems = items.value.filter(i => 
     isK8SGroup(i.group_name) && 
@@ -656,15 +660,19 @@ const k8sPodTableData = computed(() => {
   
   return podItems.map(item => {
     const labels = parseLabels(item.labels)
+    // namespace取namespace标签
+    // pod取pod标签
+    // 状态根据值判断（1=Running, 0=异常）
     return {
-      namespace: labels.kubernetes_namespace || labels.namespace || 'default',
-      pod: labels.kubernetes_name || labels.pod || labels.app || stripPort(item.instance),
-      status: labels.status || getPodStatusText(item.value)
+      namespace: labels.namespace || 'default',
+      pod: labels.pod || stripPort(item.instance),
+      status: labels.phase || (item.value === 1 ? 'Running' : '异常')
     }
   })
 })
 
 // K8S证书状态表格数据
+// 数据示例: {node="k8s-master", subject="k8s-master"} 或 {certname="apiserver", node="k8s-master"} 值为剩余秒数
 const k8sCertTableData = computed(() => {
   const certItems = items.value.filter(i => 
     isK8SGroup(i.group_name) && 
@@ -673,15 +681,17 @@ const k8sCertTableData = computed(() => {
   
   return certItems.map(item => {
     const labels = parseLabels(item.labels)
+    // instance(节点)取node标签
     return {
-      instance: labels.node || labels.kubernetes_node || stripPort(item.instance),
-      certName: labels.certname || labels.name || 'unknown',
+      instance: labels.node || stripPort(item.instance),
+      certName: labels.certname || labels.subject || labels.name || 'unknown',
       expiryDays: Math.floor(item.value / 86400)
     }
   })
 })
 
 // K8S PVC使用率表格数据
+// 数据示例: {namespace="monitoring", persistentvolumeclaim="alertmanager-main-db-alertmanager-main-0"} 值为使用百分比
 const k8sPVCTableData = computed(() => {
   const pvcItems = items.value.filter(i => 
     isK8SGroup(i.group_name) && 
@@ -690,8 +700,10 @@ const k8sPVCTableData = computed(() => {
   
   return pvcItems.map(item => {
     const labels = parseLabels(item.labels)
+    // namespace取namespace标签
+    // pvc取persistentvolumeclaim标签
     return {
-      namespace: labels.namespace || labels.kubernetes_namespace || 'default',
+      namespace: labels.namespace || 'default',
       pvc: labels.persistentvolumeclaim || 'unknown',
       usedPercent: item.value.toFixed(2),
       used: '-',
@@ -707,6 +719,7 @@ const isProcessGroup = (groupName: string): boolean => {
 }
 
 // 进程CPU表格数据 - 全局top5
+// 数据示例: {groupname="mongod", instance="192.168.0.216:9256", job="process"} 值
 const processCPUTableData = computed(() => {
   const processItems = items.value.filter(i => 
     isProcessGroup(i.group_name) || 
@@ -718,13 +731,10 @@ const processCPUTableData = computed(() => {
   
   return sorted.map(item => {
     const labels = parseLabels(item.labels)
-    // 进程名从 cmdline 或 comm 标签获取
-    let processName = labels.cmdline || labels.comm || 'unknown'
-    
-    // 如果进程名太长，截断
-    if (processName.length > 30) {
-      processName = processName.substring(0, 30) + '...'
-    }
+    // 进程名: groupname 标签
+    // 所在机器: instance 标签
+    // 值: 查询结果值
+    const processName = labels.groupname || 'unknown'
     
     return {
       instance: stripPort(item.instance),
@@ -737,6 +747,7 @@ const processCPUTableData = computed(() => {
 })
 
 // 进程内存表格数据 - 全局top5
+// 数据示例: {groupname="mongod", instance="192.168.0.216:9256", job="process"} 值
 const processMemTableData = computed(() => {
   const processItems = items.value.filter(i => 
     isProcessGroup(i.group_name) || 
@@ -748,12 +759,9 @@ const processMemTableData = computed(() => {
   
   return sorted.map(item => {
     const labels = parseLabels(item.labels)
-    // 进程名从 cmdline 或 comm 标签获取
-    let processName = labels.cmdline || labels.comm || 'unknown'
-    
-    if (processName.length > 30) {
-      processName = processName.substring(0, 30) + '...'
-    }
+    // 进程名: groupname 标签
+    // 所在机器: instance 标签
+    const processName = labels.groupname || 'unknown'
     
     return {
       instance: stripPort(item.instance),
