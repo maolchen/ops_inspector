@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"log"
 	"ops-inspection/internal/config"
 	"os"
 	"path/filepath"
@@ -73,6 +74,8 @@ func autoMigrate() error {
 
 // initDefaultData 初始化默认数据
 func initDefaultData() error {
+	log.Println("========== 开始初始化默认数据 ==========")
+
 	// 初始化默认用户
 	if err := initDefaultUser(); err != nil {
 		return err
@@ -93,6 +96,7 @@ func initDefaultData() error {
 		return err
 	}
 
+	log.Println("========== 默认数据初始化完成 ==========")
 	return nil
 }
 
@@ -101,8 +105,11 @@ func initDefaultUser() error {
 	var count int64
 	DB.Model(&User{}).Count(&count)
 	if count > 0 {
+		log.Printf("[初始化] 用户表已存在 %d 条记录，跳过初始化", count)
 		return nil
 	}
+
+	log.Println("[初始化] 开始创建默认用户 admin/admin")
 
 	// 使用 bcrypt 动态生成密码哈希
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte("admin"), bcrypt.DefaultCost)
@@ -117,7 +124,12 @@ func initDefaultUser() error {
 		DisplayName: "系统管理员",
 	}
 
-	return DB.Create(&defaultUser).Error
+	if err := DB.Create(&defaultUser).Error; err != nil {
+		return err
+	}
+
+	log.Println("[初始化] 默认用户创建成功")
+	return nil
 }
 
 // initDefaultRuleGroups 初始化默认规则组
@@ -125,8 +137,11 @@ func initDefaultRuleGroups() error {
 	var count int64
 	DB.Model(&RuleGroup{}).Count(&count)
 	if count > 0 {
+		log.Printf("[初始化] 规则组表已存在 %d 条记录，跳过初始化", count)
 		return nil
 	}
+
+	log.Println("[初始化] 开始创建默认规则组")
 
 	// 创建默认规则组（保持code一致）
 	defaultGroups := []RuleGroup{
@@ -136,7 +151,12 @@ func initDefaultRuleGroups() error {
 		{Name: "其他指标", Code: "other_metrics", Description: "域名证书等其他监控指标", SortOrder: 4},
 	}
 
-	return DB.Create(&defaultGroups).Error
+	if err := DB.Create(&defaultGroups).Error; err != nil {
+		return err
+	}
+
+	log.Printf("[初始化] 默认规则组创建成功，共 %d 个", len(defaultGroups))
+	return nil
 }
 
 // initDefaultRules 初始化默认规则
@@ -144,8 +164,11 @@ func initDefaultRules() error {
 	var count int64
 	DB.Model(&Rule{}).Count(&count)
 	if count > 0 {
+		log.Printf("[初始化] 规则表已存在 %d 条记录，跳过初始化", count)
 		return nil
 	}
+
+	log.Println("[初始化] 开始创建默认规则")
 
 	// 获取规则组ID映射
 	var groups []RuleGroup
@@ -153,6 +176,7 @@ func initDefaultRules() error {
 	groupMap := make(map[string]uint)
 	for _, g := range groups {
 		groupMap[g.Code] = g.ID
+		log.Printf("[初始化] 规则组映射: code=%s -> id=%d", g.Code, g.ID)
 	}
 
 	// 兼容映射：处理不同版本的规则组code
@@ -212,6 +236,7 @@ func initDefaultRules() error {
 	// 创建规则
 	rules := make([]Rule, 0, len(defaultRules))
 	sortOrder := 0
+	skippedRules := []string{}
 	for _, r := range defaultRules {
 		// 先尝试精确匹配
 		groupID, ok := groupMap[r.GroupCode]
@@ -220,9 +245,14 @@ func initDefaultRules() error {
 			altCode, hasAlt := compatMap[r.GroupCode]
 			if hasAlt {
 				groupID, ok = groupMap[altCode]
+				if ok {
+					log.Printf("[初始化] 规则 '%s' 使用兼容映射: %s -> %s (groupID=%d)", r.Name, r.GroupCode, altCode, groupID)
+				}
 			}
 		}
 		if !ok {
+			skippedRules = append(skippedRules, fmt.Sprintf("%s (groupCode=%s)", r.Name, r.GroupCode))
+			log.Printf("[初始化] 警告: 规则 '%s' 找不到对应的规则组 (groupCode=%s)，跳过", r.Name, r.GroupCode)
 			continue
 		}
 		rules = append(rules, Rule{
@@ -243,7 +273,16 @@ func initDefaultRules() error {
 		sortOrder++
 	}
 
-	return DB.Create(&rules).Error
+	if len(skippedRules) > 0 {
+		log.Printf("[初始化] 警告: 共跳过 %d 条规则: %v", len(skippedRules), skippedRules)
+	}
+
+	if err := DB.Create(&rules).Error; err != nil {
+		return err
+	}
+
+	log.Printf("[初始化] 默认规则创建成功，共 %d 条", len(rules))
+	return nil
 }
 
 // floatPtr 辅助函数，创建 float64 指针
