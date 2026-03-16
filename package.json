@@ -1,0 +1,14 @@
+{
+  "name": "ops-inspection",
+  "version": "1.0.0",
+  "description": "运维巡检平台",
+  "private": true,
+  "scripts": {
+    "dev": "cd frontend && pnpm dev --port 5000 --host",
+    "build": "cd frontend && pnpm install && pnpm build",
+    "start": "cd frontend && pnpm preview --port 5000 --host"
+  },
+  "keywords": ["inspection", "prometheus", "monitoring"],
+  "author": "",
+  "license": "MIT"
+}
