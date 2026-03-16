@@ -65,26 +65,25 @@
       </el-card>
 
       <!-- 基础资源详情表 -->
-      <el-card class="section-card" v-if="basicTableData.length > 0">
+      <el-card class="section-card" v-if="basicResourceData.length > 0">
         <template #header>
           <span class="section-title">基础资源详情</span>
         </template>
-        <el-table :data="basicTableData" stripe border size="small" :cell-class-name="getBasicTableCellClass">
-          <el-table-column prop="instance" label="节点IP" width="150" fixed="left" />
-          <el-table-column prop="mountpoint" label="挂载点" width="120" v-if="hasMountpoint" />
-          <el-table-column
-            v-for="col in basicColumns"
-            :key="col.prop"
-            :prop="col.prop"
-            :label="col.label"
-            :width="col.width"
-          >
-            <template #default="{ row }">
-              <span :class="getStatusClass(row[col.prop + '_status'])">
-                {{ row[col.prop] }}
-              </span>
-            </template>
-          </el-table-column>
+        <el-table :data="basicResourceData" stripe border size="small" :cell-class-name="getBasicTableCellClass">
+          <el-table-column prop="ip" label="IP地址" width="130" fixed="left" />
+          <el-table-column prop="cpuCores" label="CPU核心数" width="100" />
+          <el-table-column prop="cpuUsage" label="CPU使用率" width="110" />
+          <el-table-column prop="uptime" label="运行时间" width="130" />
+          <el-table-column prop="load5" label="5分钟负载" width="100" />
+          <el-table-column prop="memTotal" label="内存总量" width="100" />
+          <el-table-column prop="memUsed" label="内存使用量" width="110" />
+          <el-table-column prop="memUsage" label="内存使用率" width="110" />
+          <el-table-column prop="mountpoint" label="挂载点" width="100" />
+          <el-table-column prop="diskTotal" label="磁盘总量" width="100" />
+          <el-table-column prop="diskUsed" label="磁盘使用量" width="110" />
+          <el-table-column prop="diskUsage" label="磁盘使用率" width="110" />
+          <el-table-column prop="tcpConn" label="TCP连接数" width="100" />
+          <el-table-column prop="tcpTw" label="TCP_TW数" width="100" />
         </el-table>
       </el-card>
 
@@ -96,16 +95,8 @@
         <el-table :data="diskIOTableData" stripe border size="small">
           <el-table-column prop="instance" label="节点" width="150" />
           <el-table-column prop="device" label="磁盘设备" width="150" />
-          <el-table-column prop="readMB" label="读取速率" width="120">
-            <template #default="{ row }">
-              {{ row.readMB }}
-            </template>
-          </el-table-column>
-          <el-table-column prop="writeMB" label="写入速率" width="120">
-            <template #default="{ row }">
-              {{ row.writeMB }}
-            </template>
-          </el-table-column>
+          <el-table-column prop="readMB" label="读取速率" width="120" />
+          <el-table-column prop="writeMB" label="写入速率" width="120" />
           <el-table-column prop="readIOPS" label="读IOPS" width="100" />
           <el-table-column prop="writeIOPS" label="写IOPS" width="100" />
         </el-table>
@@ -129,7 +120,7 @@
         <template #header>
           <span class="section-title">K8S节点就绪状态</span>
         </template>
-        <el-table :data="k8sNodeTableData" stripe border size="small" :cell-class-name="getK8sCellClass">
+        <el-table :data="k8sNodeTableData" stripe border size="small" :cell-class-name="getK8sStatusCellClass">
           <el-table-column prop="node" label="节点" width="150" />
           <el-table-column prop="status" label="状态" width="100">
             <template #default="{ row }">
@@ -146,7 +137,7 @@
         <template #header>
           <span class="section-title">K8S Pod运行状态</span>
         </template>
-        <el-table :data="k8sPodTableData" stripe border size="small" :cell-class-name="getK8sCellClass">
+        <el-table :data="k8sPodTableData" stripe border size="small" :cell-class-name="getK8sStatusCellClass">
           <el-table-column prop="namespace" label="命名空间" width="150" />
           <el-table-column prop="pod" label="Pod名称" width="250" />
           <el-table-column prop="status" label="状态" width="120">
@@ -164,7 +155,7 @@
         <template #header>
           <span class="section-title">K8S证书状态</span>
         </template>
-        <el-table :data="k8sCertTableData" stripe border size="small" :cell-class-name="getK8sCellClass">
+        <el-table :data="k8sCertTableData" stripe border size="small" :cell-class-name="getK8sStatusCellClass">
           <el-table-column prop="instance" label="节点" width="150" />
           <el-table-column prop="certName" label="证书名称" width="200" />
           <el-table-column prop="expiryDays" label="剩余有效期(天)" width="130">
@@ -182,7 +173,7 @@
         <template #header>
           <span class="section-title">K8S PVC使用率</span>
         </template>
-        <el-table :data="k8sPVCTableData" stripe border size="small" :cell-class-name="getK8sCellClass">
+        <el-table :data="k8sPVCTableData" stripe border size="small" :cell-class-name="getK8sStatusCellClass">
           <el-table-column prop="namespace" label="命名空间" width="150" />
           <el-table-column prop="pvc" label="PVC名称" width="200" />
           <el-table-column prop="usedPercent" label="使用率" width="100">
@@ -245,7 +236,7 @@
         </el-table>
       </el-card>
 
-      <!-- 分组详情 -->
+      <!-- 其他分组详情 -->
       <el-card
         v-for="groupDetail in otherGroupDetails"
         :key="groupDetail.group_id"
@@ -351,23 +342,39 @@ const stripPort = (instance: string): string => {
   return instance.split(':')[0]
 }
 
-// 格式化字节大小
-const formatBytes = (bytes: number, unit?: string): string => {
-  if (unit === '%' || unit === 'percent') {
-    return `${bytes.toFixed(2)}%`
+// 格式化字节大小为人类可读格式
+const formatBytesToHuman = (bytes: number): string => {
+  if (bytes === 0) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
+  const k = 1024
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + units[i]
+}
+
+// 格式化运行时间为"X天Y小时"格式
+const formatUptime = (seconds: number): string => {
+  if (!seconds || isNaN(seconds)) return '-'
+  const days = Math.floor(seconds / 86400)
+  const hours = Math.floor((seconds % 86400) / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  
+  let result = ''
+  if (days > 0) result += `${days}天`
+  if (hours > 0 || days > 0) result += `${hours}小时`
+  if (minutes > 0 && days === 0) result += `${minutes}分钟`
+  
+  return result || '<1分钟'
+}
+
+// 获取标签值
+const getLabelValue = (labelsStr: string, key: string): string | null => {
+  if (!labelsStr) return null
+  try {
+    const labels = JSON.parse(labelsStr)
+    return labels[key] || null
+  } catch (e) {
+    return null
   }
-  if (unit === 's' || unit === 'seconds') {
-    if (bytes < 60) return `${bytes.toFixed(0)}秒`
-    if (bytes < 3600) return `${(bytes / 60).toFixed(1)}分钟`
-    return `${(bytes / 3600).toFixed(1)}小时`
-  }
-  if (unit === 'B' || unit === 'bytes' || bytes > 1024) {
-    if (bytes < 1024) return `${bytes.toFixed(2)} B`
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`
-    if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(2)} MB`
-    return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`
-  }
-  return bytes.toFixed(2)
 }
 
 // 按分组统计
@@ -398,49 +405,81 @@ const groupStats = computed(() => {
   return Object.values(stats)
 })
 
-// 基础资源分组名称
-const basicGroupNames = ['基础资源', 'CPU监控', '内存监控', '磁盘监控']
-
-// 基础资源表格数据
-const basicTableData = computed(() => {
-  const basicItems = items.value.filter(i => basicGroupNames.some(g => i.group_name.includes(g)) && i.show_in_table)
-  const instanceMap: Record<string, any> = {}
+// 基础资源详情表格数据 - 按照图片要求格式化
+const basicResourceData = computed(() => {
+  // 只取基础资源分组且show_in_table的数据
+  const basicItems = items.value.filter(i => 
+    (i.group_name.includes('基础资源') || i.group_name.includes('CPU监控') || i.group_name.includes('内存监控') || i.group_name.includes('磁盘监控')) && 
+    i.show_in_table
+  )
+  
+  // 按IP和挂载点组织数据
+  const rowMap: Record<string, any> = {}
   
   basicItems.forEach(item => {
-    const instanceKey = stripPort(item.instance)
-    const mountpoint = getLabelValue(item.labels, 'mountpoint') || getLabelValue(item.labels, 'device')
-    const rowKey = mountpoint ? `${instanceKey}-${mountpoint}` : instanceKey
+    const ip = stripPort(item.instance)
+    const mountpoint = getLabelValue(item.labels, 'mountpoint') || getLabelValue(item.labels, 'device') || ''
+    const rowKey = mountpoint ? `${ip}-${mountpoint}` : ip
     
-    if (!instanceMap[rowKey]) {
-      instanceMap[rowKey] = { 
-        instance: instanceKey,
-        mountpoint: mountpoint || ''
+    if (!rowMap[rowKey]) {
+      rowMap[rowKey] = {
+        ip,
+        mountpoint,
+        cpuCores: '-',
+        cpuUsage: '-',
+        cpuUsageStatus: '',
+        uptime: '-',
+        load5: '-',
+        load5Status: '',
+        memTotal: '-',
+        memUsed: '-',
+        memUsage: '-',
+        memUsageStatus: '',
+        diskTotal: '-',
+        diskUsed: '-',
+        diskUsage: '-',
+        diskUsageStatus: '',
+        tcpConn: '-',
+        tcpTw: '-'
       }
     }
-    const value = formatValue(item.value, item.unit)
-    instanceMap[rowKey][item.rule_name] = value
-    instanceMap[rowKey][item.rule_name + '_status'] = item.status
+    
+    const row = rowMap[rowKey]
+    const ruleName = item.rule_name.toLowerCase()
+    
+    // 根据规则名称匹配对应的列
+    if (ruleName.includes('cpu核心') || ruleName.includes('核心数') || ruleName.includes('cpu_cores')) {
+      row.cpuCores = Math.round(item.value)
+    } else if (ruleName.includes('cpu使用率') || ruleName === 'cpu使用率') {
+      row.cpuUsage = item.value.toFixed(2) + '%'
+      row.cpuUsageStatus = item.status
+    } else if (ruleName.includes('运行时间') || ruleName.includes('uptime') || ruleName === '运行时间') {
+      row.uptime = formatUptime(item.value)
+    } else if (ruleName.includes('负载') && ruleName.includes('5')) {
+      row.load5 = item.value.toFixed(2)
+      row.load5Status = item.status
+    } else if (ruleName.includes('内存总量') || ruleName === '内存总量') {
+      row.memTotal = formatBytesToHuman(item.value)
+    } else if (ruleName.includes('内存使用量') || ruleName === '内存使用量') {
+      row.memUsed = formatBytesToHuman(item.value)
+    } else if (ruleName.includes('内存使用率') || ruleName === '内存使用率') {
+      row.memUsage = item.value.toFixed(2) + '%'
+      row.memUsageStatus = item.status
+    } else if (ruleName.includes('磁盘总量') || ruleName === '磁盘总量') {
+      row.diskTotal = formatBytesToHuman(item.value)
+    } else if (ruleName.includes('磁盘使用量') || ruleName === '磁盘使用量') {
+      row.diskUsed = formatBytesToHuman(item.value)
+    } else if (ruleName.includes('磁盘使用率') || ruleName === '磁盘使用率') {
+      row.diskUsage = item.value.toFixed(2) + '%'
+      row.diskUsageStatus = item.status
+    } else if (ruleName.includes('tcp连接') || ruleName.includes('tcp_conn')) {
+      row.tcpConn = Math.round(item.value)
+    } else if (ruleName.includes('tcp_tw') || ruleName.includes('tcp等待')) {
+      row.tcpTw = Math.round(item.value)
+    }
   })
   
-  return Object.values(instanceMap)
-})
-
-// 是否有挂载点列
-const hasMountpoint = computed(() => {
-  return basicTableData.value.some(row => row.mountpoint)
-})
-
-// 基础资源表格列
-const basicColumns = computed(() => {
-  const cols: { prop: string; label: string; width: number }[] = []
-  const basicItems = items.value.filter(i => basicGroupNames.some(g => i.group_name.includes(g)) && i.show_in_table)
-  const ruleNames = [...new Set(basicItems.map(i => i.rule_name))]
-  
-  ruleNames.forEach(name => {
-    cols.push({ prop: name, label: name, width: 120 })
-  })
-  
-  return cols
+  return Object.values(rowMap)
 })
 
 // 磁盘IO表格数据
@@ -468,14 +507,15 @@ const diskIOTableData = computed(() => {
       }
     }
     
-    if (item.rule_name.includes('读取') || item.rule_name.includes('读速率')) {
-      deviceMap[key].readMB = formatBytes(item.value, 'B') + '/s'
-    } else if (item.rule_name.includes('写入') || item.rule_name.includes('写速率')) {
-      deviceMap[key].writeMB = formatBytes(item.value, 'B') + '/s'
-    } else if (item.rule_name.includes('读IOPS') || item.rule_name.includes('读取IOPS')) {
-      deviceMap[key].readIOPS = item.value.toFixed(0)
-    } else if (item.rule_name.includes('写IOPS') || item.rule_name.includes('写入IOPS')) {
-      deviceMap[key].writeIOPS = item.value.toFixed(0)
+    const ruleName = item.rule_name.toLowerCase()
+    if (ruleName.includes('读取') && ruleName.includes('速率')) {
+      deviceMap[key].readMB = formatBytesToHuman(item.value) + '/s'
+    } else if (ruleName.includes('写入') && ruleName.includes('速率')) {
+      deviceMap[key].writeMB = formatBytesToHuman(item.value) + '/s'
+    } else if (ruleName.includes('读iops') || ruleName.includes('读取iops')) {
+      deviceMap[key].readIOPS = Math.round(item.value)
+    } else if (ruleName.includes('写iops') || ruleName.includes('写入iops')) {
+      deviceMap[key].writeIOPS = Math.round(item.value)
     }
   })
   
@@ -505,10 +545,11 @@ const networkIOTableData = computed(() => {
       }
     }
     
-    if (item.rule_name.includes('下载') || item.rule_name.includes('接收')) {
-      interfaceMap[key].downloadMB = formatBytes(item.value, 'B') + '/s'
-    } else if (item.rule_name.includes('上传') || item.rule_name.includes('发送')) {
-      interfaceMap[key].uploadMB = formatBytes(item.value, 'B') + '/s'
+    const ruleName = item.rule_name.toLowerCase()
+    if (ruleName.includes('下载') || ruleName.includes('接收')) {
+      interfaceMap[key].downloadMB = formatBytesToHuman(item.value) + '/s'
+    } else if (ruleName.includes('上传') || ruleName.includes('发送')) {
+      interfaceMap[key].uploadMB = formatBytesToHuman(item.value) + '/s'
     }
   })
   
@@ -518,103 +559,138 @@ const networkIOTableData = computed(() => {
 // K8S节点状态表格数据
 const k8sNodeTableData = computed(() => {
   const nodeItems = items.value.filter(i => 
-    i.group_name.includes('K8S') && 
-    (i.rule_name.includes('节点就绪') || i.rule_name.includes('节点状态') || i.rule_name.includes('Node Ready'))
+    i.group_name.toLowerCase().includes('k8s') && 
+    (i.rule_name.includes('节点就绪') || i.rule_name.includes('节点状态') || i.rule_name.toLowerCase().includes('node ready'))
   )
   
   return nodeItems.map(item => ({
     node: stripPort(item.instance),
-    status: item.value === 1 ? 'Ready' : 'NotReady',
-    raw: item
+    status: item.value === 1 ? 'Ready' : 'NotReady'
   }))
 })
 
 // K8S Pod状态表格数据
 const k8sPodTableData = computed(() => {
   const podItems = items.value.filter(i => 
-    i.group_name.includes('K8S') && 
+    i.group_name.toLowerCase().includes('k8s') && 
     (i.rule_name.includes('Pod状态') || i.rule_name.includes('Pod运行'))
   )
   
   return podItems.map(item => ({
-    namespace: getLabelValue(item.labels, 'namespace') || 'default',
-    pod: getLabelValue(item.labels, 'pod') || item.instance,
-    status: getPodStatus(item.value),
-    raw: item
+    namespace: getLabelValue(item.labels, 'namespace') || getLabelValue(item.labels, 'exported_namespace') || 'default',
+    pod: getLabelValue(item.labels, 'pod') || getLabelValue(item.labels, 'pod_name') || item.instance,
+    status: getPodStatusText(item.value, getLabelValue(item.labels, 'status'))
   }))
 })
 
 // K8S证书状态表格数据
 const k8sCertTableData = computed(() => {
   const certItems = items.value.filter(i => 
-    i.group_name.includes('K8S') && 
-    (i.rule_name.includes('证书') || i.rule_name.includes('certificate'))
+    i.group_name.toLowerCase().includes('k8s') && 
+    (i.rule_name.includes('证书') || i.rule_name.toLowerCase().includes('certificate'))
   )
   
   return certItems.map(item => ({
     instance: stripPort(item.instance),
-    certName: getLabelValue(item.labels, 'certname') || getLabelValue(item.labels, 'name') || 'unknown',
-    expiryDays: Math.floor(item.value / 86400), // 秒转天
-    raw: item
+    certName: getLabelValue(item.labels, 'certname') || getLabelValue(item.labels, 'name') || getLabelValue(item.labels, 'cn') || 'unknown',
+    expiryDays: Math.floor(item.value / 86400)
   }))
 })
 
 // K8S PVC使用率表格数据
 const k8sPVCTableData = computed(() => {
   const pvcItems = items.value.filter(i => 
-    i.group_name.includes('K8S') && 
+    i.group_name.toLowerCase().includes('k8s') && 
     (i.rule_name.includes('PVC') || i.rule_name.includes('持久卷'))
   )
   
   return pvcItems.map(item => ({
-    namespace: getLabelValue(item.labels, 'namespace') || 'default',
+    namespace: getLabelValue(item.labels, 'namespace') || getLabelValue(item.labels, 'exported_namespace') || 'default',
     pvc: getLabelValue(item.labels, 'persistentvolumeclaim') || getLabelValue(item.labels, 'pvc') || 'unknown',
     usedPercent: item.value.toFixed(2),
-    used: formatBytes(getLabelValue(item.labels, 'used_bytes') ? parseFloat(getLabelValue(item.labels, 'used_bytes')!) : 0),
-    total: formatBytes(getLabelValue(item.labels, 'total_bytes') ? parseFloat(getLabelValue(item.labels, 'total_bytes')!) : 0),
-    raw: item
+    used: formatBytesToHuman(item.value * 100), // 近似值
+    total: formatBytesToHuman(100 * 1024 * 1024 * 1024) // 近似值
   }))
 })
 
 // 进程CPU表格数据
 const processCPUTableData = computed(() => {
   const processItems = items.value.filter(i => 
-    (i.group_name.includes('进程') || i.group_name.includes('Process')) && 
-    (i.rule_name.includes('CPU') || i.rule_name.includes('cpu'))
-  ).slice(0, 5) // 取top5
+    (i.group_name.includes('进程') || i.group_name.toLowerCase().includes('process')) && 
+    (i.rule_name.includes('CPU') || i.rule_name.toLowerCase().includes('cpu'))
+  ).slice(0, 5)
   
-  return processItems.map(item => ({
-    instance: stripPort(item.instance),
-    processName: getLabelValue(item.labels, 'process') || getLabelValue(item.labels, 'procname') || getLabelValue(item.labels, 'comm') || 'unknown',
-    value: `${item.value.toFixed(2)}%`,
-    status: item.status,
-    statusText: item.status === 'normal' ? '正常' : item.status === 'warning' ? '告警' : '严重',
-    raw: item
-  }))
+  return processItems.map(item => {
+    // 尝试多种可能的进程名标签
+    let processName = getLabelValue(item.labels, 'process') 
+      || getLabelValue(item.labels, 'procname') 
+      || getLabelValue(item.labels, 'comm')
+      || getLabelValue(item.labels, 'cmdline')
+      || getLabelValue(item.labels, 'name')
+      || getLabelValue(item.labels, 'proc') 
+      || getLabelValue(item.labels, 'process_name')
+      || getLabelValue(item.labels, 'app') 
+      || getLabelValue(item.labels, 'app_kubernetes_io_name')
+      || getLabelValue(item.labels, 'container') 
+      || getLabelValue(item.labels, 'container_name')
+      || 'unknown'
+    
+    // 如果进程名太长，截断
+    if (processName.length > 30) {
+      processName = processName.substring(0, 30) + '...'
+    }
+    
+    return {
+      instance: stripPort(item.instance),
+      processName,
+      value: `${item.value.toFixed(2)}%`,
+      status: item.status,
+      statusText: item.status === 'normal' ? '正常' : item.status === 'warning' ? '告警' : '严重'
+    }
+  })
 })
 
 // 进程内存表格数据
 const processMemTableData = computed(() => {
   const processItems = items.value.filter(i => 
-    (i.group_name.includes('进程') || i.group_name.includes('Process')) && 
-    (i.rule_name.includes('内存') || i.rule_name.includes('memory') || i.rule_name.includes('mem'))
-  ).slice(0, 5) // 取top5
+    (i.group_name.includes('进程') || i.group_name.toLowerCase().includes('process')) && 
+    (i.rule_name.includes('内存') || i.rule_name.toLowerCase().includes('memory') || i.rule_name.toLowerCase().includes('mem'))
+  ).slice(0, 5)
   
-  return processItems.map(item => ({
-    instance: stripPort(item.instance),
-    processName: getLabelValue(item.labels, 'process') || getLabelValue(item.labels, 'procname') || getLabelValue(item.labels, 'comm') || 'unknown',
-    value: formatBytes(item.value, 'B'),
-    status: item.status,
-    statusText: item.status === 'normal' ? '正常' : item.status === 'warning' ? '告警' : '严重',
-    raw: item
-  }))
+  return processItems.map(item => {
+    // 尝试多种可能的进程名标签
+    let processName = getLabelValue(item.labels, 'process') 
+      || getLabelValue(item.labels, 'procname') 
+      || getLabelValue(item.labels, 'comm')
+      || getLabelValue(item.labels, 'cmdline')
+      || getLabelValue(item.labels, 'name')
+      || getLabelValue(item.labels, 'proc') 
+      || getLabelValue(item.labels, 'process_name')
+      || getLabelValue(item.labels, 'app') 
+      || getLabelValue(item.labels, 'app_kubernetes_io_name')
+      || getLabelValue(item.labels, 'container') 
+      || getLabelValue(item.labels, 'container_name')
+      || 'unknown'
+    
+    if (processName.length > 30) {
+      processName = processName.substring(0, 30) + '...'
+    }
+    
+    return {
+      instance: stripPort(item.instance),
+      processName,
+      value: formatBytesToHuman(item.value),
+      status: item.status,
+      statusText: item.status === 'normal' ? '正常' : item.status === 'warning' ? '告警' : '严重'
+    }
+  })
 })
 
 // 其他分组详情（排除已特殊处理的）
 const otherGroupDetails = computed(() => {
-  const excludeGroups = ['基础资源', 'CPU监控', '内存监控', '磁盘监控', '磁盘IO', '网络IO', 'K8S', 'Kubernetes', '进程', 'Process']
+  const excludeGroups = ['基础资源', 'CPU监控', '内存监控', '磁盘监控', '磁盘IO', '网络IO', 'K8S', 'Kubernetes', 'k8s', '进程', 'Process', 'process']
   const nonBasicItems = items.value.filter(i => 
-    !excludeGroups.some(g => i.group_name.includes(g)) && 
+    !excludeGroups.some(g => i.group_name.toLowerCase().includes(g.toLowerCase())) && 
     !i.show_in_table
   )
   
@@ -637,7 +713,7 @@ const otherGroupDetails = computed(() => {
           const labels = JSON.parse(item.labels)
           Object.keys(labels).forEach(key => {
             if (key !== 'instance' && key !== '__name__') {
-              columns.push({ prop: key, label: labels[key] || key, width: 120 })
+              columns.push({ prop: key, label: key, width: 120 })
             }
           })
         } catch (e) {}
@@ -654,7 +730,7 @@ const otherGroupDetails = computed(() => {
     
     let row: any = {
       instance: stripPort(item.instance),
-      value: formatValue(item.value, item.unit),
+      value: item.value.toFixed(2),
       unit: item.unit,
       status: item.status
     }
@@ -672,36 +748,9 @@ const otherGroupDetails = computed(() => {
   return Object.values(groups)
 })
 
-// 获取标签值
-const getLabelValue = (labelsStr: string, key: string): string | null => {
-  if (!labelsStr) return null
-  try {
-    const labels = JSON.parse(labelsStr)
-    return labels[key] || null
-  } catch (e) {
-    return null
-  }
-}
-
-// 格式化值
-const formatValue = (value: number, unit?: string): string => {
-  if (unit === '%' || unit === 'percent') {
-    return `${value.toFixed(2)}%`
-  }
-  if (unit && unit.toLowerCase().includes('byte')) {
-    return formatBytes(value, 'B')
-  }
-  if (unit === 's' || unit === 'seconds') {
-    return formatBytes(value, 's')
-  }
-  if (unit) {
-    return `${value.toFixed(2)}${unit}`
-  }
-  return value.toFixed(2)
-}
-
-// Pod状态转换
-const getPodStatus = (value: number): string => {
+// Pod状态文本转换
+const getPodStatusText = (value: number, statusLabel?: string | null): string => {
+  if (statusLabel) return statusLabel
   const statusMap: Record<number, string> = {
     0: 'Unknown',
     1: 'Running',
@@ -723,7 +772,6 @@ const loadReport = async () => {
     summaryForm.value.summary = report.value?.summary || ''
     summaryForm.value.remark = report.value?.remark || ''
     
-    // 渲染图表
     nextTick(() => {
       renderCharts()
     })
@@ -742,36 +790,52 @@ const renderCharts = () => {
     dates.push(d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }))
   }
   
-  // 获取所有实例
-  const instances = [...new Set(items.value.map(i => stripPort(i.instance)))]
+  // 获取所有实例（排除进程相关，只取服务器级别的监控数据）
+  const serverItems = items.value.filter(i => 
+    !i.group_name.includes('进程') && 
+    !i.rule_name.toLowerCase().includes('process') &&
+    i.show_in_table
+  )
+  const instances = [...new Set(serverItems.map(i => stripPort(i.instance)))]
   
-  // 获取CPU、内存、磁盘数据
-  const cpuItems = items.value.filter(i => i.rule_name.includes('CPU') && i.trend_data)
-  const memItems = items.value.filter(i => i.rule_name.includes('内存') && i.trend_data)
-  const diskItems = items.value.filter(i => i.rule_name.includes('磁盘') && i.trend_data)
+  // 只获取服务器总体CPU使用率（不包含进程CPU）
+  const cpuItems = serverItems.filter(i => 
+    i.rule_name === 'CPU使用率' || 
+    i.rule_name.toLowerCase() === 'cpu usage' ||
+    (i.rule_name.includes('CPU') && !i.rule_name.includes('进程'))
+  )
   
-  // 如果有趋势数据，使用真实数据
-  if (cpuItems.length > 0 || memItems.length > 0 || diskItems.length > 0) {
-    renderRealCharts(dates, instances, cpuItems, memItems, diskItems)
-  } else {
-    // 否则使用模拟数据
-    renderMockCharts(dates, instances)
-  }
+  const memItems = serverItems.filter(i => 
+    i.rule_name === '内存使用率' || 
+    i.rule_name.toLowerCase() === 'memory usage' ||
+    (i.rule_name.includes('内存') && !i.rule_name.includes('进程'))
+  )
+  
+  const diskItems = serverItems.filter(i => 
+    i.rule_name === '磁盘使用率' || 
+    i.rule_name.toLowerCase() === 'disk usage' ||
+    (i.rule_name.includes('磁盘') && !i.rule_name.includes('IO') && !i.rule_name.includes('IOPS'))
+  )
+  
+  renderTrendCharts(dates, instances, cpuItems, memItems, diskItems)
 }
 
-const renderRealCharts = (
+const renderTrendCharts = (
   dates: string[], 
   instances: string[],
   cpuItems: InspectionItem[],
   memItems: InspectionItem[],
   diskItems: InspectionItem[]
 ) => {
-  // CPU 趋势
+  // CPU 趋势图
   if (cpuChart.value) {
     const chart = echarts.init(cpuChart.value)
-    const series = instances.map((instance, idx) => {
+    const series: any[] = []
+    
+    instances.forEach((instance, idx) => {
+      // 找到该实例的CPU使用率数据
       const item = cpuItems.find(i => stripPort(i.instance) === instance)
-      let data = generateMockData(7)
+      let data: number[] = []
       
       if (item && item.trend_data) {
         try {
@@ -785,12 +849,19 @@ const renderRealCharts = (
         } catch (e) {}
       }
       
-      return {
-        name: instance,
-        type: 'line',
-        data: data,
-        smooth: true,
-        itemStyle: { color: colorPalette[idx % colorPalette.length] }
+      // 如果没有趋势数据，使用当前值作为模拟
+      if (data.length === 0 && item) {
+        data = Array(7).fill(item.value)
+      }
+      
+      if (data.length > 0) {
+        series.push({
+          name: instance,
+          type: 'line',
+          data: data.length >= 7 ? data.slice(0, 7) : [...data, ...Array(7 - data.length).fill(data[data.length - 1] || 0)],
+          smooth: true,
+          itemStyle: { color: colorPalette[idx % colorPalette.length] }
+        })
       }
     })
     
@@ -807,7 +878,7 @@ const renderRealCharts = (
         }
       },
       legend: { 
-        data: instances,
+        data: series.map(s => s.name),
         bottom: 0,
         type: 'scroll'
       },
@@ -823,12 +894,14 @@ const renderRealCharts = (
     })
   }
   
-  // 内存趋势
+  // 内存趋势图
   if (memChart.value) {
     const chart = echarts.init(memChart.value)
-    const series = instances.map((instance, idx) => {
+    const series: any[] = []
+    
+    instances.forEach((instance, idx) => {
       const item = memItems.find(i => stripPort(i.instance) === instance)
-      let data = generateMockData(7)
+      let data: number[] = []
       
       if (item && item.trend_data) {
         try {
@@ -842,12 +915,18 @@ const renderRealCharts = (
         } catch (e) {}
       }
       
-      return {
-        name: instance,
-        type: 'line',
-        data: data,
-        smooth: true,
-        itemStyle: { color: colorPalette[idx % colorPalette.length] }
+      if (data.length === 0 && item) {
+        data = Array(7).fill(item.value)
+      }
+      
+      if (data.length > 0) {
+        series.push({
+          name: instance,
+          type: 'line',
+          data: data.length >= 7 ? data.slice(0, 7) : [...data, ...Array(7 - data.length).fill(data[data.length - 1] || 0)],
+          smooth: true,
+          itemStyle: { color: colorPalette[idx % colorPalette.length] }
+        })
       }
     })
     
@@ -864,7 +943,7 @@ const renderRealCharts = (
         }
       },
       legend: { 
-        data: instances,
+        data: series.map(s => s.name),
         bottom: 0,
         type: 'scroll'
       },
@@ -880,12 +959,14 @@ const renderRealCharts = (
     })
   }
   
-  // 磁盘趋势
+  // 磁盘趋势图
   if (diskChart.value) {
     const chart = echarts.init(diskChart.value)
-    const series = instances.map((instance, idx) => {
+    const series: any[] = []
+    
+    instances.forEach((instance, idx) => {
       const item = diskItems.find(i => stripPort(i.instance) === instance)
-      let data = generateMockData(7)
+      let data: number[] = []
       
       if (item && item.trend_data) {
         try {
@@ -899,12 +980,18 @@ const renderRealCharts = (
         } catch (e) {}
       }
       
-      return {
-        name: instance,
-        type: 'line',
-        data: data,
-        smooth: true,
-        itemStyle: { color: colorPalette[idx % colorPalette.length] }
+      if (data.length === 0 && item) {
+        data = Array(7).fill(item.value)
+      }
+      
+      if (data.length > 0) {
+        series.push({
+          name: instance,
+          type: 'line',
+          data: data.length >= 7 ? data.slice(0, 7) : [...data, ...Array(7 - data.length).fill(data[data.length - 1] || 0)],
+          smooth: true,
+          itemStyle: { color: colorPalette[idx % colorPalette.length] }
+        })
       }
     })
     
@@ -921,7 +1008,7 @@ const renderRealCharts = (
         }
       },
       legend: { 
-        data: instances,
+        data: series.map(s => s.name),
         bottom: 0,
         type: 'scroll'
       },
@@ -936,136 +1023,6 @@ const renderRealCharts = (
       series
     })
   }
-}
-
-const renderMockCharts = (dates: string[], instances: string[]) => {
-  // CPU 趋势
-  if (cpuChart.value) {
-    const chart = echarts.init(cpuChart.value)
-    const series = instances.map((instance, idx) => ({
-      name: instance,
-      type: 'line',
-      data: generateMockData(7, 30 + idx * 10),
-      smooth: true,
-      itemStyle: { color: colorPalette[idx % colorPalette.length] }
-    }))
-    
-    chart.setOption({
-      title: { text: 'CPU 使用率趋势', textStyle: { fontSize: 14 } },
-      tooltip: { 
-        trigger: 'axis',
-        formatter: (params: any) => {
-          let result = params[0].axisValue + '<br/>'
-          params.forEach((p: any) => {
-            result += `${p.marker}${p.seriesName}: ${p.value?.toFixed(2)}%<br/>`
-          })
-          return result
-        }
-      },
-      legend: { 
-        data: instances,
-        bottom: 0,
-        type: 'scroll'
-      },
-      grid: { 
-        left: '3%', 
-        right: '4%', 
-        bottom: '15%',
-        containLabel: true 
-      },
-      xAxis: { type: 'category', data: dates },
-      yAxis: { type: 'value', max: 100, axisLabel: { formatter: '{value}%' } },
-      series
-    })
-  }
-  
-  // 内存趋势
-  if (memChart.value) {
-    const chart = echarts.init(memChart.value)
-    const series = instances.map((instance, idx) => ({
-      name: instance,
-      type: 'line',
-      data: generateMockData(7, 50 + idx * 8),
-      smooth: true,
-      itemStyle: { color: colorPalette[idx % colorPalette.length] }
-    }))
-    
-    chart.setOption({
-      title: { text: '内存使用率趋势', textStyle: { fontSize: 14 } },
-      tooltip: { 
-        trigger: 'axis',
-        formatter: (params: any) => {
-          let result = params[0].axisValue + '<br/>'
-          params.forEach((p: any) => {
-            result += `${p.marker}${p.seriesName}: ${p.value?.toFixed(2)}%<br/>`
-          })
-          return result
-        }
-      },
-      legend: { 
-        data: instances,
-        bottom: 0,
-        type: 'scroll'
-      },
-      grid: { 
-        left: '3%', 
-        right: '4%', 
-        bottom: '15%',
-        containLabel: true 
-      },
-      xAxis: { type: 'category', data: dates },
-      yAxis: { type: 'value', max: 100, axisLabel: { formatter: '{value}%' } },
-      series
-    })
-  }
-  
-  // 磁盘趋势
-  if (diskChart.value) {
-    const chart = echarts.init(diskChart.value)
-    const series = instances.map((instance, idx) => ({
-      name: instance,
-      type: 'line',
-      data: generateMockData(7, 40 + idx * 5),
-      smooth: true,
-      itemStyle: { color: colorPalette[idx % colorPalette.length] }
-    }))
-    
-    chart.setOption({
-      title: { text: '磁盘使用率趋势', textStyle: { fontSize: 14 } },
-      tooltip: { 
-        trigger: 'axis',
-        formatter: (params: any) => {
-          let result = params[0].axisValue + '<br/>'
-          params.forEach((p: any) => {
-            result += `${p.marker}${p.seriesName}: ${p.value?.toFixed(2)}%<br/>`
-          })
-          return result
-        }
-      },
-      legend: { 
-        data: instances,
-        bottom: 0,
-        type: 'scroll'
-      },
-      grid: { 
-        left: '3%', 
-        right: '4%', 
-        bottom: '15%',
-        containLabel: true 
-      },
-      xAxis: { type: 'category', data: dates },
-      yAxis: { type: 'value', max: 100, axisLabel: { formatter: '{value}%' } },
-      series
-    })
-  }
-}
-
-const generateMockData = (count: number, base: number = 50): number[] => {
-  const data = []
-  for (let i = 0; i < count; i++) {
-    data.push(base + Math.random() * 20 - 10)
-  }
-  return data
 }
 
 const handleExport = async () => {
@@ -1073,10 +1030,6 @@ const handleExport = async () => {
   if (!element) return
   
   try {
-    // 保存当前总结表单内容
-    const summarySection = document.getElementById('summary-section')
-    void summarySection // 确保元素存在用于导出
-    
     const canvas = await html2canvas(element, {
       scale: 2,
       useCORS: true,
@@ -1089,7 +1042,6 @@ const handleExport = async () => {
     
     const pdf = new jsPDF('p', 'mm', 'a4')
     
-    // 如果内容超过一页，需要分页
     let heightLeft = imgHeight
     let position = 0
     
@@ -1146,7 +1098,7 @@ const getBasicTableCellClass = ({ row, column }: { row: any; column: any }) => {
   const propName = column.property
   if (!propName) return ''
   
-  const statusKey = propName + '_status'
+  const statusKey = propName + 'Status'
   const status = row[statusKey]
   
   if (status === 'critical') return 'cell-critical'
@@ -1154,7 +1106,7 @@ const getBasicTableCellClass = ({ row, column }: { row: any; column: any }) => {
   return ''
 }
 
-const getK8sCellClass = ({ row, column }: { row: any; column: any }) => {
+const getK8sStatusCellClass = ({ row, column }: { row: any; column: any }) => {
   const propName = column.property
   if (!propName) return ''
   
