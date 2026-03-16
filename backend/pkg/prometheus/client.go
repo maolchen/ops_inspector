@@ -1,6 +1,7 @@
 package prometheus
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -21,11 +22,19 @@ type Client struct {
 	httpClient *http.Client
 }
 
-// NewClient 创建客户端
+// NewClient 创建客户端（支持HTTPS自签证书）
 func NewClient() *Client {
+	// 创建自定义Transport，跳过TLS证书验证
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true, // 忽略证书验证，支持自签证书
+		},
+	}
+
 	return &Client{
 		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout:   30 * time.Second,
+			Transport: transport,
 		},
 	}
 }
