@@ -44,7 +44,7 @@
           </el-table-column>
           <el-table-column prop="threshold" label="阈值" width="100">
             <template #default="{ row }">
-              <span v-if="row.threshold">{{ row.threshold }} {{ row.unit }}</span>
+              <span v-if="row.threshold !== null && row.threshold !== undefined">{{ row.threshold }} {{ row.unit }}</span>
               <span v-else style="color: #999">-</span>
             </template>
           </el-table-column>

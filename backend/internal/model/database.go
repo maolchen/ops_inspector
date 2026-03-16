@@ -159,12 +159,12 @@ func initDefaultRules() error {
 		{"basic_resources", "磁盘使用率", true, true, "节点磁盘使用率统计", `(node_filesystem_size_bytes{fstype=~"ext.*|xfs",mountpoint !~".*pod.*|/run.*|/boot.*|/tmp.*"}-node_filesystem_free_bytes{fstype=~"ext.*|xfs",mountpoint !~".*pod.*|/run.*|/boot.*|/tmp.*"}) *100/(node_filesystem_avail_bytes{fstype=~"ext.*|xfs",mountpoint !~".*pod.*|/run.*|/boot.*|/tmp.*"}+(node_filesystem_size_bytes{fstype=~"ext.*|xfs",mountpoint !~".*pod.*|/run.*|/boot.*|/tmp.*"}-node_filesystem_free_bytes{fstype=~"ext.*|xfs",mountpoint !~".*pod.*|/run.*|/boot.*|/tmp.*"}))`, floatPtr(80), "greater", "%", `{"instance":"节点","mountpoint":"挂载点","device":"磁盘"}`},
 		{"basic_resources", "运行时间", false, true, "系统运行时长统计", "time() - node_boot_time_seconds", nil, "", "s", `{"instance":"节点"}`},
 		{"basic_resources", "5分钟负载", false, true, "系统5分钟平均负载", "node_load5", nil, "", "", `{"instance":"节点"}`},
-		{"basic_resources", "30分钟内磁盘平均读取值", false, false, "30分钟内磁盘平均读取速率", `avg_over_time(rate(node_disk_read_bytes_total{device=~"vd.*|sd.*"}[5m])[30m:1m]) / 1024 / 1024`, nil, "", "MB/s", `{"instance":"节点","device":"设备"}`},
-		{"basic_resources", "30分钟内磁盘平均写入值", false, true, "30分钟内磁盘平均写入速率", `avg_over_time(rate(node_disk_written_bytes_total{device=~"vd.*|sd.*"}[5m])[30m:1m]) / 1024 / 1024`, nil, "", "MB/s", `{"instance":"节点","device":"设备"}`},
+		{"basic_resources", "30分钟内磁盘平均读取值", true, false, "30分钟内磁盘平均读取速率", `avg_over_time(rate(node_disk_read_bytes_total{device=~"vd.*|sd.*"}[5m])[30m:1m]) / 1024 / 1024`, floatPtr(100), "greater", "MB/s", `{"instance":"节点","device":"设备"}`},
+		{"basic_resources", "30分钟内磁盘平均写入值", true, false, "30分钟内磁盘平均写入速率", `avg_over_time(rate(node_disk_written_bytes_total{device=~"vd.*|sd.*"}[5m])[30m:1m]) / 1024 / 1024`, floatPtr(100), "greater", "MB/s", `{"instance":"节点","device":"设备"}`},
 		{"basic_resources", "TCP连接数", false, true, "当前活跃的TCP连接总数", "node_netstat_Tcp_CurrEstab", nil, "", "个", `{"instance":"节点"}`},
 		{"basic_resources", "TCP_TW数", false, true, "TCP TIME_WAIT状态连接数", "node_sockstat_TCP_tw", nil, "", "个", `{"instance":"节点"}`},
-		{"basic_resources", "30分钟内下载速率", false, false, "30分钟内网络平均下载速率", `avg_over_time(rate(node_network_receive_bytes_total{device=~"eth.*|ens.*"}[5m])[30m:1m]) / 1024 / 1024`, nil, "", "MB/s", `{"instance":"节点","device":"设备"}`},
-		{"basic_resources", "30分钟内上传速率", false, false, "30分钟内网络平均上传速率", `avg_over_time(rate(node_network_transmit_bytes_total{device=~"eth.*|ens.*"}[5m])[30m:1m]) / 1024 / 1024`, nil, "", "MB/s", `{"instance":"节点","device":"设备"}`},
+		{"basic_resources", "30分钟内下载速率", true, false, "30分钟内网络平均下载速率", `avg_over_time(rate(node_network_receive_bytes_total{device=~"eth.*|ens.*"}[5m])[30m:1m]) / 1024 / 1024`, floatPtr(100), "greater", "MB/s", `{"instance":"节点","device":"设备"}`},
+		{"basic_resources", "30分钟内上传速率", true, false, "30分钟内网络平均上传速率", `avg_over_time(rate(node_network_transmit_bytes_total{device=~"eth.*|ens.*"}[5m])[30m:1m]) / 1024 / 1024`, floatPtr(100), "greater", "MB/s", `{"instance":"节点","device":"设备"}`},
 
 		// Kubernetes集群状态
 		{"k8s_cluster", "节点就绪状态", true, false, "K8s节点就绪状态检查", `kube_node_status_condition{condition='Ready',status!='true'}`, floatPtr(0), "equal", "", `{"node":"节点","condition":"状态类型"}`},

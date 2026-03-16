@@ -88,30 +88,40 @@
       </el-card>
 
       <!-- 磁盘IO详情 -->
-      <el-card class="section-card" v-if="diskIOTableData.length > 0">
+      <el-card class="section-card" v-if="diskIOGroupedData.length > 0">
         <template #header>
           <span class="section-title">磁盘IO详情</span>
         </template>
-        <el-table :data="diskIOTableData" stripe border size="small">
+        <el-table :data="diskIOGroupedData" stripe border size="small" :cell-class-name="getIOStatusCellClass">
           <el-table-column prop="instance" label="节点" width="150" />
-          <el-table-column prop="device" label="磁盘设备" width="150" />
-          <el-table-column prop="readMB" label="读取速率" width="120" />
-          <el-table-column prop="writeMB" label="写入速率" width="120" />
-          <el-table-column prop="readIOPS" label="读IOPS" width="100" />
-          <el-table-column prop="writeIOPS" label="写IOPS" width="100" />
+          <el-table-column prop="device" label="设备" width="150" />
+          <el-table-column prop="value" label="值" width="120" />
+          <el-table-column prop="status" label="状态" width="100">
+            <template #default="{ row }">
+              <span :class="row.status === '正常' ? 'status-normal' : 'status-warning'">
+                {{ row.status }}
+              </span>
+            </template>
+          </el-table-column>
         </el-table>
       </el-card>
 
       <!-- 网络IO详情 -->
-      <el-card class="section-card" v-if="networkIOTableData.length > 0">
+      <el-card class="section-card" v-if="networkIOGroupedData.length > 0">
         <template #header>
           <span class="section-title">网络IO详情</span>
         </template>
-        <el-table :data="networkIOTableData" stripe border size="small">
+        <el-table :data="networkIOGroupedData" stripe border size="small" :cell-class-name="getIOStatusCellClass">
           <el-table-column prop="instance" label="节点" width="150" />
-          <el-table-column prop="interface" label="网卡" width="120" />
-          <el-table-column prop="downloadMB" label="下载速率" width="120" />
-          <el-table-column prop="uploadMB" label="上传速率" width="120" />
+          <el-table-column prop="device" label="设备" width="150" />
+          <el-table-column prop="value" label="值" width="120" />
+          <el-table-column prop="status" label="状态" width="100">
+            <template #default="{ row }">
+              <span :class="row.status === '正常' ? 'status-normal' : 'status-warning'">
+                {{ row.status }}
+              </span>
+            </template>
+          </el-table-column>
         </el-table>
       </el-card>
 
@@ -122,9 +132,15 @@
         </template>
         <el-table :data="k8sNodeTableData" stripe border size="small" :cell-class-name="getK8sStatusCellClass">
           <el-table-column prop="node" label="节点" width="150" />
+          <el-table-column prop="statusType" label="状态类型" width="120">
+            <template #default>
+              Ready
+            </template>
+          </el-table-column>
+          <el-table-column prop="value" label="值" width="100" />
           <el-table-column prop="status" label="状态" width="100">
             <template #default="{ row }">
-              <span :class="row.status === 'Ready' ? 'status-ready' : 'status-not-ready'">
+              <span :class="row.status === '正常' ? 'status-normal' : 'status-critical'">
                 {{ row.status }}
               </span>
             </template>
@@ -150,23 +166,29 @@
         </el-table>
       </el-card>
 
-      <!-- K8S证书状态 -->
-      <el-card class="section-card" v-if="k8sCertTableData.length > 0">
-        <template #header>
-          <span class="section-title">K8S证书状态</span>
-        </template>
-        <el-table :data="k8sCertTableData" stripe border size="small" :cell-class-name="getK8sStatusCellClass">
-          <el-table-column prop="instance" label="节点" width="150" />
-          <el-table-column prop="certName" label="证书名称" width="200" />
-          <el-table-column prop="expiryDays" label="剩余有效期(天)" width="130">
-            <template #default="{ row }">
-              <span :class="getCertStatusClass(row.expiryDays)">
-                {{ row.expiryDays }}
-              </span>
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-card>
+      <!-- K8S证书状态 - 按证书类型分组 -->
+      <template v-for="(certGroup, certType) in k8sCertGroupedData" :key="certType">
+        <el-card class="section-card" v-if="certGroup.length > 0">
+          <template #header>
+            <span class="section-title">{{ certType }}</span>
+          </template>
+          <el-table :data="certGroup" stripe border size="small" :cell-class-name="getK8sStatusCellClass">
+            <el-table-column prop="node" label="节点" width="150" />
+            <el-table-column prop="value" label="值" width="150">
+              <template #default="{ row }">
+                {{ row.value }} 天
+              </template>
+            </el-table-column>
+            <el-table-column prop="status" label="状态" width="100">
+              <template #default="{ row }">
+                <span :class="row.status === '正常' ? 'status-normal' : 'status-warning'">
+                  {{ row.status }}
+                </span>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-card>
+      </template>
 
       <!-- K8S PVC使用率 -->
       <el-card class="section-card" v-if="k8sPVCTableData.length > 0">
@@ -183,8 +205,13 @@
               </span>
             </template>
           </el-table-column>
-          <el-table-column prop="used" label="已用" width="100" />
-          <el-table-column prop="total" label="总量" width="100" />
+          <el-table-column prop="status" label="状态" width="100">
+            <template #default="{ row }">
+              <span :class="row.status === '正常' ? 'status-normal' : 'status-warning'">
+                {{ row.status }}
+              </span>
+            </template>
+          </el-table-column>
         </el-table>
       </el-card>
 
@@ -541,45 +568,37 @@ const isDiskIOGroup = (groupName: string): boolean => {
          (lower.includes('io') || lower.includes('读写'))
 }
 
-// 磁盘IO表格数据
-const diskIOTableData = computed(() => {
+// 磁盘IO表格数据 - 节点、设备、值、状态
+// 数据来源: 30分钟内磁盘平均读取值、30分钟内磁盘平均写入值
+// 阈值: 100 MB/s，大于阈值告警
+const diskIOGroupedData = computed(() => {
   const diskItems = items.value.filter(i => 
-    isDiskIOGroup(i.group_name) || 
-    (i.rule_name.includes('读取') || i.rule_name.includes('写入') || i.rule_name.includes('IO') || i.rule_name.includes('IOPS'))
+    i.rule_name.includes('30分钟内磁盘平均读取值') || 
+    i.rule_name.includes('30分钟内磁盘平均写入值') ||
+    i.rule_name.includes('磁盘平均读取') ||
+    i.rule_name.includes('磁盘平均写入')
   )
   
-  const deviceMap: Record<string, any> = {}
+  const result: Array<{ instance: string; device: string; value: string; status: string }> = []
   
   diskItems.forEach(item => {
-    const instance = stripPort(item.instance)
     const labels = parseLabels(item.labels)
-    const device = labels.device || labels.mountpoint || labels.disk || 'unknown'
-    const key = `${instance}-${device}`
+    const instance = stripPort(item.instance)
+    const device = labels.device || 'unknown'
+    const valueMB = item.value // 已经是MB/s
     
-    if (!deviceMap[key]) {
-      deviceMap[key] = {
-        instance,
-        device,
-        readMB: '-',
-        writeMB: '-',
-        readIOPS: '-',
-        writeIOPS: '-'
-      }
-    }
+    // 阈值100 MB/s
+    const status = valueMB > 100 ? '异常' : '正常'
     
-    const ruleName = item.rule_name.toLowerCase()
-    if ((ruleName.includes('读取') || ruleName.includes('读速率') || ruleName.includes('read')) && ruleName.includes('速率')) {
-      deviceMap[key].readMB = formatBytesToHuman(item.value) + '/s'
-    } else if ((ruleName.includes('写入') || ruleName.includes('写速率') || ruleName.includes('write')) && ruleName.includes('速率')) {
-      deviceMap[key].writeMB = formatBytesToHuman(item.value) + '/s'
-    } else if (ruleName.includes('读iops') || ruleName.includes('读取iops') || ruleName.includes('read iops')) {
-      deviceMap[key].readIOPS = Math.round(item.value)
-    } else if (ruleName.includes('写iops') || ruleName.includes('写入iops') || ruleName.includes('write iops')) {
-      deviceMap[key].writeIOPS = Math.round(item.value)
-    }
+    result.push({
+      instance,
+      device,
+      value: `${valueMB.toFixed(2)} MB/s`,
+      status
+    })
   })
   
-  return Object.values(deviceMap)
+  return result
 })
 
 // 判断是否为网络IO分组
@@ -588,39 +607,37 @@ const isNetworkIOGroup = (groupName: string): boolean => {
   return lower.includes('网络') || lower.includes('network')
 }
 
-// 网络IO表格数据
-const networkIOTableData = computed(() => {
+// 网络IO表格数据 - 节点、设备、值、状态
+// 数据来源: 30分钟内下载速率、30分钟内上传速率
+// 阈值: 100 MB/s，大于阈值告警
+const networkIOGroupedData = computed(() => {
   const networkItems = items.value.filter(i => 
-    isNetworkIOGroup(i.group_name) || 
-    (i.rule_name.includes('下载') || i.rule_name.includes('上传') || i.rule_name.includes('接收') || i.rule_name.includes('发送') || i.rule_name.includes('网络'))
+    i.rule_name.includes('30分钟内下载速率') || 
+    i.rule_name.includes('30分钟内上传速率') ||
+    i.rule_name.includes('下载速率') ||
+    i.rule_name.includes('上传速率')
   )
   
-  const interfaceMap: Record<string, any> = {}
+  const result: Array<{ instance: string; device: string; value: string; status: string }> = []
   
   networkItems.forEach(item => {
-    const instance = stripPort(item.instance)
     const labels = parseLabels(item.labels)
-    const iface = labels.interface || labels.device || labels.nic || 'eth0'
-    const key = `${instance}-${iface}`
+    const instance = stripPort(item.instance)
+    const device = labels.device || 'unknown'
+    const valueMB = item.value // 已经是MB/s
     
-    if (!interfaceMap[key]) {
-      interfaceMap[key] = {
-        instance,
-        interface: iface,
-        downloadMB: '-',
-        uploadMB: '-'
-      }
-    }
+    // 阈值100 MB/s
+    const status = valueMB > 100 ? '异常' : '正常'
     
-    const ruleName = item.rule_name.toLowerCase()
-    if (ruleName.includes('下载') || ruleName.includes('接收') || ruleName.includes('download') || ruleName.includes('receive')) {
-      interfaceMap[key].downloadMB = formatBytesToHuman(item.value) + '/s'
-    } else if (ruleName.includes('上传') || ruleName.includes('发送') || ruleName.includes('upload') || ruleName.includes('transmit')) {
-      interfaceMap[key].uploadMB = formatBytesToHuman(item.value) + '/s'
-    }
+    result.push({
+      instance,
+      device,
+      value: `${valueMB.toFixed(2)} MB/s`,
+      status
+    })
   })
   
-  return Object.values(interfaceMap)
+  return result
 })
 
 // 判断是否为K8S分组
@@ -630,7 +647,8 @@ const isK8SGroup = (groupName: string): boolean => {
 }
 
 // K8S节点状态表格数据
-// 数据示例: {node="192.168.0.69"} 值为状态（1=Ready, 0=NotReady）
+// 数据示例: {node="192.168.0.69"} 值为状态（0=正常/Ready, 其他值=异常/NotReady）
+// 节点需要去重，状态类型固定为"Ready"
 const k8sNodeTableData = computed(() => {
   const nodeItems = items.value.filter(i => 
     isK8SGroup(i.group_name) && 
@@ -638,15 +656,24 @@ const k8sNodeTableData = computed(() => {
      i.rule_name.toLowerCase().includes('node ready') || i.rule_name.toLowerCase().includes('node status'))
   )
   
-  return nodeItems.map(item => {
+  // 节点去重
+  const nodeMap: Record<string, { node: string; statusType: string; value: number; status: string }> = {}
+  
+  nodeItems.forEach(item => {
     const labels = parseLabels(item.labels)
-    // node取node标签
-    // 状态根据值判断（1=Ready, 0=NotReady）
-    return {
-      node: labels.node || stripPort(item.instance),
-      status: item.value === 1 ? 'Ready' : 'NotReady'
+    const node = labels.node || stripPort(item.instance)
+    
+    if (!nodeMap[node]) {
+      nodeMap[node] = {
+        node,
+        statusType: 'Ready',
+        value: item.value,
+        status: item.value === 0 ? '正常' : '异常'  // 0表示正常
+      }
     }
   })
+  
+  return Object.values(nodeMap)
 })
 
 // K8S Pod状态表格数据
@@ -671,27 +698,49 @@ const k8sPodTableData = computed(() => {
   })
 })
 
-// K8S证书状态表格数据
-// 数据示例: {node="k8s-master", subject="k8s-master"} 或 {certname="apiserver", node="k8s-master"} 值为剩余秒数
-const k8sCertTableData = computed(() => {
+// K8S证书状态表格数据 - 按证书类型分组
+// 数据示例: {node="k8s-master"} 值为剩余天数
+// 根据规则名分组：Kubelet证书状态、Kubeproxy证书状态、Kubecontroller证书状态
+const k8sCertGroupedData = computed(() => {
   const certItems = items.value.filter(i => 
     isK8SGroup(i.group_name) && 
     (i.rule_name.includes('证书') || i.rule_name.toLowerCase().includes('certificate'))
   )
   
-  return certItems.map(item => {
+  const grouped: Record<string, Array<{ node: string; value: number; status: string }>> = {}
+  
+  certItems.forEach(item => {
     const labels = parseLabels(item.labels)
-    // instance(节点)取node标签
-    return {
-      instance: labels.node || stripPort(item.instance),
-      certName: labels.certname || labels.subject || labels.name || 'unknown',
-      expiryDays: Math.floor(item.value / 86400)
+    const node = labels.node || labels.instance || stripPort(item.instance)
+    const value = Math.floor(item.value) // 天数
+    
+    // 从规则名获取证书类型
+    let certType = item.rule_name
+    if (item.rule_name.includes('Kubelet')) {
+      certType = 'Kubelet证书状态'
+    } else if (item.rule_name.includes('Kubeproxy')) {
+      certType = 'Kubeproxy证书状态'
+    } else if (item.rule_name.includes('Kubecontroller') || item.rule_name.includes('Controller')) {
+      certType = 'Kubecontroller证书状态'
     }
+    
+    if (!grouped[certType]) {
+      grouped[certType] = []
+    }
+    
+    grouped[certType].push({
+      node,
+      value,
+      status: value >= 30 ? '正常' : '异常' // 小于30天为异常
+    })
   })
+  
+  return grouped
 })
 
 // K8S PVC使用率表格数据
 // 数据示例: {namespace="monitoring", persistentvolumeclaim="alertmanager-main-db-alertmanager-main-0"} 值为使用百分比
+// 去掉已用和总量，增加状态列（根据阈值90%判断）
 const k8sPVCTableData = computed(() => {
   const pvcItems = items.value.filter(i => 
     isK8SGroup(i.group_name) && 
@@ -702,12 +751,13 @@ const k8sPVCTableData = computed(() => {
     const labels = parseLabels(item.labels)
     // namespace取namespace标签
     // pvc取persistentvolumeclaim标签
+    // 状态根据阈值判断（>=90%为异常）
+    const usedPercent = parseFloat(item.value.toFixed(2))
     return {
       namespace: labels.namespace || 'default',
       pvc: labels.persistentvolumeclaim || 'unknown',
-      usedPercent: item.value.toFixed(2),
-      used: '-',
-      total: '-'
+      usedPercent,
+      status: usedPercent >= 90 ? '异常' : '正常'
     }
   })
 })
@@ -1211,6 +1261,17 @@ const getUsageStatusClass = (percent: number | string) => {
   return ''
 }
 
+const getIOStatusCellClass = ({ row, column }: { row: any; column: any }) => {
+  const propName = column.property
+  if (!propName) return ''
+  
+  if (propName === 'status') {
+    if (row.status === '正常') return 'cell-ready'
+    return 'cell-warning'
+  }
+  return ''
+}
+
 const formatDate = (date?: string) => {
   if (!date) return '-'
   return new Date(date).toLocaleString('zh-CN')
@@ -1246,6 +1307,7 @@ onMounted(() => loadReport())
 .status-warning { color: #E6A23C; font-weight: bold; }
 .status-ready { color: #67C23A; font-weight: bold; }
 .status-not-ready { color: #F56C6C; font-weight: bold; }
+.status-normal { color: #67C23A; font-weight: bold; }
 </style>
 
 <style>
