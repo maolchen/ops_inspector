@@ -812,42 +812,23 @@ const processMemTableData = computed(() => {
 
 // ==================== 磁盘IO和网络IO相关表格 ====================
 
-// 格式化速率值为人类可读格式 (Bytes/s -> KB/s, MB/s, GB/s)
-const formatRateToHuman = (bytesPerSec: number): string => {
-  if (!bytesPerSec || isNaN(bytesPerSec)) return '-'
-  if (bytesPerSec === 0) return '0 B/s'
-  const units = ['B/s', 'KB/s', 'MB/s', 'GB/s', 'TB/s']
-  const k = 1024
-  const i = Math.floor(Math.log(Math.abs(bytesPerSec)) / Math.log(k))
-  return parseFloat((bytesPerSec / Math.pow(k, i)).toFixed(2)) + ' ' + units[i]
-}
-
-// 判断是否为磁盘IO分组
-const isDiskIOGroup = (groupName: string): boolean => {
-  const lower = groupName.toLowerCase()
-  return lower.includes('磁盘io') || lower.includes('disk io') || lower.includes('diskio')
-}
-
-// 判断是否为网络IO分组
-const isNetworkIOGroup = (groupName: string): boolean => {
-  const lower = groupName.toLowerCase()
-  return lower.includes('网络io') || lower.includes('network io') || lower.includes('networkio')
-}
-
 // 磁盘平均写入值表格数据
+// 直接根据规则名称识别，不依赖分组名称
 const diskWriteTableData = computed(() => {
   const diskWriteItems = items.value.filter(i => 
-    isDiskIOGroup(i.group_name) && 
-    (i.rule_name.includes('写入') || i.rule_name.toLowerCase().includes('write'))
+    i.rule_name.includes('磁盘平均写入') || 
+    i.rule_name.includes('磁盘写入') ||
+    i.rule_name.toLowerCase().includes('disk write') ||
+    i.rule_name.toLowerCase().includes('diskwrite')
   )
   
   return diskWriteItems.map(item => {
     const labels = parseLabels(item.labels)
     return {
       instance: stripPort(item.instance),
-      device: labels.device || labels.mountpoint || '-',
+      device: labels.device || '-',
       value: item.value,
-      valueFormatted: formatRateToHuman(item.value),
+      valueFormatted: `${item.value.toFixed(2)} MB/s`,
       status: item.status
     }
   })
@@ -856,17 +837,19 @@ const diskWriteTableData = computed(() => {
 // 磁盘平均读取值表格数据
 const diskReadTableData = computed(() => {
   const diskReadItems = items.value.filter(i => 
-    isDiskIOGroup(i.group_name) && 
-    (i.rule_name.includes('读取') || i.rule_name.toLowerCase().includes('read'))
+    i.rule_name.includes('磁盘平均读取') || 
+    i.rule_name.includes('磁盘读取') ||
+    i.rule_name.toLowerCase().includes('disk read') ||
+    i.rule_name.toLowerCase().includes('diskread')
   )
   
   return diskReadItems.map(item => {
     const labels = parseLabels(item.labels)
     return {
       instance: stripPort(item.instance),
-      device: labels.device || labels.mountpoint || '-',
+      device: labels.device || '-',
       value: item.value,
-      valueFormatted: formatRateToHuman(item.value),
+      valueFormatted: `${item.value.toFixed(2)} MB/s`,
       status: item.status
     }
   })
@@ -875,8 +858,10 @@ const diskReadTableData = computed(() => {
 // 上传速率表格数据
 const networkUploadTableData = computed(() => {
   const uploadItems = items.value.filter(i => 
-    isNetworkIOGroup(i.group_name) && 
-    (i.rule_name.includes('上传') || i.rule_name.toLowerCase().includes('upload') || i.rule_name.toLowerCase().includes('transmit'))
+    i.rule_name.includes('上传速率') || 
+    i.rule_name.includes('上传') ||
+    i.rule_name.toLowerCase().includes('upload rate') ||
+    i.rule_name.toLowerCase().includes('network transmit')
   )
   
   return uploadItems.map(item => {
@@ -885,7 +870,7 @@ const networkUploadTableData = computed(() => {
       instance: stripPort(item.instance),
       device: labels.device || labels.interface || labels.if || '-',
       value: item.value,
-      valueFormatted: formatRateToHuman(item.value),
+      valueFormatted: `${item.value.toFixed(2)} MB/s`,
       status: item.status
     }
   })
@@ -894,8 +879,10 @@ const networkUploadTableData = computed(() => {
 // 下载速率表格数据
 const networkDownloadTableData = computed(() => {
   const downloadItems = items.value.filter(i => 
-    isNetworkIOGroup(i.group_name) && 
-    (i.rule_name.includes('下载') || i.rule_name.toLowerCase().includes('download') || i.rule_name.toLowerCase().includes('receive'))
+    i.rule_name.includes('下载速率') || 
+    i.rule_name.includes('下载') ||
+    i.rule_name.toLowerCase().includes('download rate') ||
+    i.rule_name.toLowerCase().includes('network receive')
   )
   
   return downloadItems.map(item => {
@@ -904,7 +891,7 @@ const networkDownloadTableData = computed(() => {
       instance: stripPort(item.instance),
       device: labels.device || labels.interface || labels.if || '-',
       value: item.value,
-      valueFormatted: formatRateToHuman(item.value),
+      valueFormatted: `${item.value.toFixed(2)} MB/s`,
       status: item.status
     }
   })
@@ -912,14 +899,40 @@ const networkDownloadTableData = computed(() => {
 
 // ==================== 其他分组详情 ====================
 
+// 判断是否为磁盘IO相关规则
+const isDiskIORule = (ruleName: string): boolean => {
+  const lower = ruleName.toLowerCase()
+  return ruleName.includes('磁盘平均写入') || 
+         ruleName.includes('磁盘平均读取') ||
+         ruleName.includes('磁盘写入') ||
+         ruleName.includes('磁盘读取') ||
+         lower.includes('disk write') ||
+         lower.includes('disk read') ||
+         lower.includes('diskwrite') ||
+         lower.includes('diskread')
+}
+
+// 判断是否为网络IO相关规则
+const isNetworkIORule = (ruleName: string): boolean => {
+  const lower = ruleName.toLowerCase()
+  return ruleName.includes('上传速率') || 
+         ruleName.includes('下载速率') ||
+         ruleName.includes('上传') ||
+         ruleName.includes('下载') ||
+         lower.includes('upload rate') ||
+         lower.includes('download rate') ||
+         lower.includes('network transmit') ||
+         lower.includes('network receive')
+}
+
 // 其他分组详情（排除已特殊处理的）
 const otherGroupDetails = computed(() => {
   const nonBasicItems = items.value.filter(i => {
     if (i.show_in_table) return false
     if (isK8SGroup(i.group_name)) return false
     if (isProcessGroup(i.group_name)) return false
-    if (isDiskIOGroup(i.group_name)) return false
-    if (isNetworkIOGroup(i.group_name)) return false
+    if (isDiskIORule(i.rule_name)) return false
+    if (isNetworkIORule(i.rule_name)) return false
     return true
   })
   
