@@ -637,10 +637,13 @@ const k8sNodeTableData = computed(() => {
      i.rule_name.toLowerCase().includes('node ready') || i.rule_name.toLowerCase().includes('node status'))
   )
   
-  return nodeItems.map(item => ({
-    node: stripPort(item.instance),
-    status: item.value === 1 ? 'Ready' : 'NotReady'
-  }))
+  return nodeItems.map(item => {
+    const labels = parseLabels(item.labels)
+    return {
+      node: labels.node || labels.kubernetes_node || labels.instance || stripPort(item.instance),
+      status: item.value === 1 ? 'Ready' : 'NotReady'
+    }
+  })
 })
 
 // K8S Pod状态表格数据
@@ -654,8 +657,8 @@ const k8sPodTableData = computed(() => {
   return podItems.map(item => {
     const labels = parseLabels(item.labels)
     return {
-      namespace: labels.namespace || labels.exported_namespace || 'default',
-      pod: labels.pod || labels.pod_name || stripPort(item.instance),
+      namespace: labels.kubernetes_namespace || labels.namespace || 'default',
+      pod: labels.kubernetes_name || labels.pod || labels.app || stripPort(item.instance),
       status: labels.status || getPodStatusText(item.value)
     }
   })
@@ -671,8 +674,8 @@ const k8sCertTableData = computed(() => {
   return certItems.map(item => {
     const labels = parseLabels(item.labels)
     return {
-      instance: stripPort(item.instance),
-      certName: labels.certname || labels.name || labels.cn || labels.subject || 'unknown',
+      instance: labels.node || labels.kubernetes_node || stripPort(item.instance),
+      certName: labels.certname || labels.name || 'unknown',
       expiryDays: Math.floor(item.value / 86400)
     }
   })
@@ -682,17 +685,17 @@ const k8sCertTableData = computed(() => {
 const k8sPVCTableData = computed(() => {
   const pvcItems = items.value.filter(i => 
     isK8SGroup(i.group_name) && 
-    (i.rule_name.includes('PVC') || i.rule_name.includes('持久卷') || i.rule_name.toLowerCase().includes('pvc'))
+    (i.rule_name.includes('PVC') || i.rule_name.includes('持久卷') || i.rule_name.toLowerCase().includes('pvc') || i.rule_name.includes('存储卷'))
   )
   
   return pvcItems.map(item => {
     const labels = parseLabels(item.labels)
     return {
-      namespace: labels.namespace || labels.exported_namespace || 'default',
-      pvc: labels.persistentvolumeclaim || labels.pvc || 'unknown',
+      namespace: labels.namespace || labels.kubernetes_namespace || 'default',
+      pvc: labels.persistentvolumeclaim || 'unknown',
       usedPercent: item.value.toFixed(2),
-      used: formatBytesToHuman(item.value * 1024 * 1024 * 1024 / 100), // 近似
-      total: formatBytesToHuman(100 * 1024 * 1024 * 1024) // 近似
+      used: '-',
+      total: '-'
     }
   })
 })
@@ -715,21 +718,8 @@ const processCPUTableData = computed(() => {
   
   return sorted.map(item => {
     const labels = parseLabels(item.labels)
-    // 尝试多种可能的进程名标签
-    let processName = labels.process || 
-                      labels.procname || 
-                      labels.comm ||
-                      labels.cmdline ||
-                      labels.name ||
-                      labels.proc ||
-                      labels.process_name ||
-                      labels.app ||
-                      labels.app_kubernetes_io_name ||
-                      labels.container ||
-                      labels.container_name ||
-                      labels.service ||
-                      labels.service_name ||
-                      'unknown'
+    // 进程名从 cmdline 或 comm 标签获取
+    let processName = labels.cmdline || labels.comm || 'unknown'
     
     // 如果进程名太长，截断
     if (processName.length > 30) {
@@ -758,20 +748,8 @@ const processMemTableData = computed(() => {
   
   return sorted.map(item => {
     const labels = parseLabels(item.labels)
-    let processName = labels.process || 
-                      labels.procname || 
-                      labels.comm ||
-                      labels.cmdline ||
-                      labels.name ||
-                      labels.proc ||
-                      labels.process_name ||
-                      labels.app ||
-                      labels.app_kubernetes_io_name ||
-                      labels.container ||
-                      labels.container_name ||
-                      labels.service ||
-                      labels.service_name ||
-                      'unknown'
+    // 进程名从 cmdline 或 comm 标签获取
+    let processName = labels.cmdline || labels.comm || 'unknown'
     
     if (processName.length > 30) {
       processName = processName.substring(0, 30) + '...'
