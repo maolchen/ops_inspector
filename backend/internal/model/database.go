@@ -128,7 +128,7 @@ func initDefaultRuleGroups() error {
 		return nil
 	}
 
-	// 创建默认规则组
+	// 创建默认规则组（保持code一致）
 	defaultGroups := []RuleGroup{
 		{Name: "服务器基础资源", Code: "basic_resources", Description: "服务器CPU、内存、磁盘、网络等基础监控", SortOrder: 1},
 		{Name: "Kubernetes集群状态", Code: "k8s_cluster", Description: "K8s节点、Pod、PVC等集群状态监控", SortOrder: 2},
@@ -153,6 +153,13 @@ func initDefaultRules() error {
 	groupMap := make(map[string]uint)
 	for _, g := range groups {
 		groupMap[g.Code] = g.ID
+	}
+
+	// 兼容映射：处理不同版本的规则组code
+	compatMap := map[string]string{
+		"k8s_cluster":      "k8s_container",    // 新code -> 旧code
+		"process_metrics":  "process_resources", // 新code -> 旧code
+		"other_metrics":    "others",            // 新code -> 旧code
 	}
 
 	// 定义默认规则
@@ -206,7 +213,15 @@ func initDefaultRules() error {
 	rules := make([]Rule, 0, len(defaultRules))
 	sortOrder := 0
 	for _, r := range defaultRules {
+		// 先尝试精确匹配
 		groupID, ok := groupMap[r.GroupCode]
+		if !ok {
+			// 尝试使用兼容映射
+			altCode, hasAlt := compatMap[r.GroupCode]
+			if hasAlt {
+				groupID, ok = groupMap[altCode]
+			}
+		}
 		if !ok {
 			continue
 		}
