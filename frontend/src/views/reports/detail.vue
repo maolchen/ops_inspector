@@ -330,7 +330,7 @@ const summaryForm = ref({
   remark: ''
 })
 
-// 预定义的颜色列表，用于区分不同实例
+// 预定义的颜色列表
 const colorPalette = [
   '#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de',
   '#3ba272', '#fc8452', '#9a60b4', '#ea7ccc', '#48b8d0'
@@ -344,10 +344,11 @@ const stripPort = (instance: string): string => {
 
 // 格式化字节大小为人类可读格式
 const formatBytesToHuman = (bytes: number): string => {
+  if (!bytes || isNaN(bytes)) return '-'
   if (bytes === 0) return '0 B'
   const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
   const k = 1024
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  const i = Math.floor(Math.log(Math.abs(bytes)) / Math.log(k))
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + units[i]
 }
 
@@ -366,14 +367,13 @@ const formatUptime = (seconds: number): string => {
   return result || '<1分钟'
 }
 
-// 获取标签值
-const getLabelValue = (labelsStr: string, key: string): string | null => {
-  if (!labelsStr) return null
+// 解析labels JSON（用于调试和通用获取）
+const parseLabels = (labelsStr: string): Record<string, string> => {
+  if (!labelsStr) return {}
   try {
-    const labels = JSON.parse(labelsStr)
-    return labels[key] || null
+    return JSON.parse(labelsStr)
   } catch (e) {
-    return null
+    return {}
   }
 }
 
@@ -405,87 +405,146 @@ const groupStats = computed(() => {
   return Object.values(stats)
 })
 
-// 基础资源详情表格数据 - 按照图片要求格式化
+// 判断是否为基础资源分组
+const isBasicResourceGroup = (groupName: string): boolean => {
+  const lower = groupName.toLowerCase()
+  return lower.includes('基础资源') || 
+         lower.includes('cpu') || 
+         lower.includes('内存') || 
+         lower.includes('磁盘') ||
+         lower.includes('disk') ||
+         lower.includes('memory') ||
+         lower.includes('基础')
+}
+
+// 基础资源详情表格数据
 const basicResourceData = computed(() => {
   // 只取基础资源分组且show_in_table的数据
-  const basicItems = items.value.filter(i => 
-    (i.group_name.includes('基础资源') || i.group_name.includes('CPU监控') || i.group_name.includes('内存监控') || i.group_name.includes('磁盘监控')) && 
-    i.show_in_table
-  )
+  const basicItems = items.value.filter(i => isBasicResourceGroup(i.group_name) && i.show_in_table)
   
-  // 按IP和挂载点组织数据
-  const rowMap: Record<string, any> = {}
+  // 先按IP分组，收集每个IP的所有数据
+  const ipDataMap: Record<string, Record<string, { value: number; status: string; labels: Record<string, string> }>> = {}
+  const ipMountpoints: Record<string, Set<string>> = {}
   
   basicItems.forEach(item => {
     const ip = stripPort(item.instance)
-    const mountpoint = getLabelValue(item.labels, 'mountpoint') || getLabelValue(item.labels, 'device') || ''
-    const rowKey = mountpoint ? `${ip}-${mountpoint}` : ip
+    const labels = parseLabels(item.labels)
+    const mountpoint = labels.mountpoint || labels.device || ''
     
-    if (!rowMap[rowKey]) {
-      rowMap[rowKey] = {
-        ip,
-        mountpoint,
-        cpuCores: '-',
-        cpuUsage: '-',
-        cpuUsageStatus: '',
-        uptime: '-',
-        load5: '-',
-        load5Status: '',
-        memTotal: '-',
-        memUsed: '-',
-        memUsage: '-',
-        memUsageStatus: '',
-        diskTotal: '-',
-        diskUsed: '-',
-        diskUsage: '-',
-        diskUsageStatus: '',
-        tcpConn: '-',
-        tcpTw: '-'
-      }
+    if (!ipDataMap[ip]) {
+      ipDataMap[ip] = {}
+      ipMountpoints[ip] = new Set()
     }
     
-    const row = rowMap[rowKey]
-    const ruleName = item.rule_name.toLowerCase()
+    // 记录该IP的挂载点
+    if (mountpoint && !mountpoint.includes('pod') && !mountpoint.startsWith('/run') && !mountpoint.startsWith('/boot')) {
+      ipMountpoints[ip].add(mountpoint)
+    }
     
-    // 根据规则名称匹配对应的列
-    if (ruleName.includes('cpu核心') || ruleName.includes('核心数') || ruleName.includes('cpu_cores')) {
-      row.cpuCores = Math.round(item.value)
-    } else if (ruleName.includes('cpu使用率') || ruleName === 'cpu使用率') {
-      row.cpuUsage = item.value.toFixed(2) + '%'
-      row.cpuUsageStatus = item.status
-    } else if (ruleName.includes('运行时间') || ruleName.includes('uptime') || ruleName === '运行时间') {
-      row.uptime = formatUptime(item.value)
-    } else if (ruleName.includes('负载') && ruleName.includes('5')) {
-      row.load5 = item.value.toFixed(2)
-      row.load5Status = item.status
-    } else if (ruleName.includes('内存总量') || ruleName === '内存总量') {
-      row.memTotal = formatBytesToHuman(item.value)
-    } else if (ruleName.includes('内存使用量') || ruleName === '内存使用量') {
-      row.memUsed = formatBytesToHuman(item.value)
-    } else if (ruleName.includes('内存使用率') || ruleName === '内存使用率') {
-      row.memUsage = item.value.toFixed(2) + '%'
-      row.memUsageStatus = item.status
-    } else if (ruleName.includes('磁盘总量') || ruleName === '磁盘总量') {
-      row.diskTotal = formatBytesToHuman(item.value)
-    } else if (ruleName.includes('磁盘使用量') || ruleName === '磁盘使用量') {
-      row.diskUsed = formatBytesToHuman(item.value)
-    } else if (ruleName.includes('磁盘使用率') || ruleName === '磁盘使用率') {
-      row.diskUsage = item.value.toFixed(2) + '%'
-      row.diskUsageStatus = item.status
-    } else if (ruleName.includes('tcp连接') || ruleName.includes('tcp_conn')) {
-      row.tcpConn = Math.round(item.value)
-    } else if (ruleName.includes('tcp_tw') || ruleName.includes('tcp等待')) {
-      row.tcpTw = Math.round(item.value)
+    // 存储数据，用 规则名_挂载点 作为key来区分不同挂载点的磁盘数据
+    const dataKey = mountpoint ? `${item.rule_name}_${mountpoint}` : item.rule_name
+    ipDataMap[ip][dataKey] = {
+      value: item.value,
+      status: item.status,
+      labels
+    }
+    
+    // 也存储一份不带挂载点的数据（用于非磁盘指标）
+    if (!ipDataMap[ip][item.rule_name]) {
+      ipDataMap[ip][item.rule_name] = {
+        value: item.value,
+        status: item.status,
+        labels
+      }
     }
   })
   
-  return Object.values(rowMap)
+  // 生成表格行数据
+  const result: any[] = []
+  
+  Object.keys(ipDataMap).forEach(ip => {
+    const data = ipDataMap[ip]
+    const mountpoints = Array.from(ipMountpoints[ip])
+    
+    // 如果没有挂载点，添加一行
+    if (mountpoints.length === 0) {
+      result.push(createBasicRow(ip, data, ''))
+    } else {
+      // 每个挂载点一行
+      mountpoints.forEach((mountpoint, idx) => {
+        result.push(createBasicRow(ip, data, mountpoint, idx === 0))
+      })
+    }
+  })
+  
+  return result
 })
+
+// 创建基础资源行数据
+const createBasicRow = (ip: string, data: Record<string, any>, mountpoint: string, isFirst: boolean = true) => {
+  const getData = (keys: string[]): { value: number; status: string } | undefined => {
+    for (const key of keys) {
+      // 先尝试带挂载点的key
+      const mpKey = `${key}_${mountpoint}`
+      if (data[mpKey]) return data[mpKey]
+      if (data[key]) return data[key]
+    }
+    return undefined
+  }
+  
+  // CPU相关 - 支持多种规则名称
+  const cpuCores = getData(['CPU核心数', 'cpu_cores', 'CPU核心', 'cpu核心'])
+  const cpuUsage = getData(['CPU使用率', 'cpu使用率', 'CPU Usage'])
+  const uptime = getData(['运行时间', 'uptime', '系统运行时间'])
+  const load5 = getData(['5分钟负载', '负载5', 'load5', '系统负载'])
+  
+  // 内存相关 - 支持多种规则名称
+  const memTotal = getData(['内存总量', 'memory_total', 'Memory Total', '节点内存'])
+  const memUsed = getData(['内存使用量', 'memory_used', 'Memory Used'])
+  const memUsage = getData(['内存使用率', 'memory_usage', 'Memory Usage'])
+  
+  // 磁盘相关
+  const diskTotal = getData(['磁盘总量', 'disk_total', 'Disk Total'])
+  const diskUsed = getData(['磁盘使用量', 'disk_used', 'Disk Used'])
+  const diskUsage = getData(['磁盘使用率', 'disk_usage', 'Disk Usage'])
+  
+  // 网络相关
+  const tcpConn = getData(['TCP连接数', 'tcp_conn', 'TCP Connections'])
+  const tcpTw = getData(['TCP_TW数', 'tcp_tw', 'TCP TimeWait'])
+  
+  return {
+    ip: isFirst ? ip : '', // 非第一行不显示IP，视觉上表示同一服务器
+    mountpoint: mountpoint || '-',
+    cpuCores: cpuCores ? Math.round(cpuCores.value) : '-',
+    cpuUsage: cpuUsage ? cpuUsage.value.toFixed(2) + '%' : '-',
+    cpuUsageStatus: cpuUsage?.status || '',
+    uptime: uptime ? formatUptime(uptime.value) : '-',
+    load5: load5 ? load5.value.toFixed(2) : '-',
+    load5Status: load5?.status || '',
+    memTotal: memTotal ? formatBytesToHuman(memTotal.value) : '-',
+    memUsed: memUsed ? formatBytesToHuman(memUsed.value) : '-',
+    memUsage: memUsage ? memUsage.value.toFixed(2) + '%' : '-',
+    memUsageStatus: memUsage?.status || '',
+    diskTotal: diskTotal ? formatBytesToHuman(diskTotal.value) : '-',
+    diskUsed: diskUsed ? formatBytesToHuman(diskUsed.value) : '-',
+    diskUsage: diskUsage ? diskUsage.value.toFixed(2) + '%' : '-',
+    diskUsageStatus: diskUsage?.status || '',
+    tcpConn: tcpConn ? Math.round(tcpConn.value) : '-',
+    tcpTw: tcpTw ? Math.round(tcpTw.value) : '-'
+  }
+}
+
+// 判断是否为磁盘IO分组
+const isDiskIOGroup = (groupName: string): boolean => {
+  const lower = groupName.toLowerCase()
+  return (lower.includes('磁盘') || lower.includes('disk')) && 
+         (lower.includes('io') || lower.includes('读写'))
+}
 
 // 磁盘IO表格数据
 const diskIOTableData = computed(() => {
   const diskItems = items.value.filter(i => 
-    i.group_name.includes('磁盘') && 
+    isDiskIOGroup(i.group_name) || 
     (i.rule_name.includes('读取') || i.rule_name.includes('写入') || i.rule_name.includes('IO') || i.rule_name.includes('IOPS'))
   )
   
@@ -493,7 +552,8 @@ const diskIOTableData = computed(() => {
   
   diskItems.forEach(item => {
     const instance = stripPort(item.instance)
-    const device = getLabelValue(item.labels, 'device') || getLabelValue(item.labels, 'mountpoint') || 'unknown'
+    const labels = parseLabels(item.labels)
+    const device = labels.device || labels.mountpoint || labels.disk || 'unknown'
     const key = `${instance}-${device}`
     
     if (!deviceMap[key]) {
@@ -508,13 +568,13 @@ const diskIOTableData = computed(() => {
     }
     
     const ruleName = item.rule_name.toLowerCase()
-    if (ruleName.includes('读取') && ruleName.includes('速率')) {
+    if ((ruleName.includes('读取') || ruleName.includes('读速率') || ruleName.includes('read')) && ruleName.includes('速率')) {
       deviceMap[key].readMB = formatBytesToHuman(item.value) + '/s'
-    } else if (ruleName.includes('写入') && ruleName.includes('速率')) {
+    } else if ((ruleName.includes('写入') || ruleName.includes('写速率') || ruleName.includes('write')) && ruleName.includes('速率')) {
       deviceMap[key].writeMB = formatBytesToHuman(item.value) + '/s'
-    } else if (ruleName.includes('读iops') || ruleName.includes('读取iops')) {
+    } else if (ruleName.includes('读iops') || ruleName.includes('读取iops') || ruleName.includes('read iops')) {
       deviceMap[key].readIOPS = Math.round(item.value)
-    } else if (ruleName.includes('写iops') || ruleName.includes('写入iops')) {
+    } else if (ruleName.includes('写iops') || ruleName.includes('写入iops') || ruleName.includes('write iops')) {
       deviceMap[key].writeIOPS = Math.round(item.value)
     }
   })
@@ -522,18 +582,25 @@ const diskIOTableData = computed(() => {
   return Object.values(deviceMap)
 })
 
+// 判断是否为网络IO分组
+const isNetworkIOGroup = (groupName: string): boolean => {
+  const lower = groupName.toLowerCase()
+  return lower.includes('网络') || lower.includes('network')
+}
+
 // 网络IO表格数据
 const networkIOTableData = computed(() => {
   const networkItems = items.value.filter(i => 
-    i.group_name.includes('网络') && 
-    (i.rule_name.includes('下载') || i.rule_name.includes('上传') || i.rule_name.includes('接收') || i.rule_name.includes('发送'))
+    isNetworkIOGroup(i.group_name) || 
+    (i.rule_name.includes('下载') || i.rule_name.includes('上传') || i.rule_name.includes('接收') || i.rule_name.includes('发送') || i.rule_name.includes('网络'))
   )
   
   const interfaceMap: Record<string, any> = {}
   
   networkItems.forEach(item => {
     const instance = stripPort(item.instance)
-    const iface = getLabelValue(item.labels, 'interface') || getLabelValue(item.labels, 'device') || 'eth0'
+    const labels = parseLabels(item.labels)
+    const iface = labels.interface || labels.device || labels.nic || 'eth0'
     const key = `${instance}-${iface}`
     
     if (!interfaceMap[key]) {
@@ -546,9 +613,9 @@ const networkIOTableData = computed(() => {
     }
     
     const ruleName = item.rule_name.toLowerCase()
-    if (ruleName.includes('下载') || ruleName.includes('接收')) {
+    if (ruleName.includes('下载') || ruleName.includes('接收') || ruleName.includes('download') || ruleName.includes('receive')) {
       interfaceMap[key].downloadMB = formatBytesToHuman(item.value) + '/s'
-    } else if (ruleName.includes('上传') || ruleName.includes('发送')) {
+    } else if (ruleName.includes('上传') || ruleName.includes('发送') || ruleName.includes('upload') || ruleName.includes('transmit')) {
       interfaceMap[key].uploadMB = formatBytesToHuman(item.value) + '/s'
     }
   })
@@ -556,11 +623,18 @@ const networkIOTableData = computed(() => {
   return Object.values(interfaceMap)
 })
 
+// 判断是否为K8S分组
+const isK8SGroup = (groupName: string): boolean => {
+  const lower = groupName.toLowerCase()
+  return lower.includes('k8s') || lower.includes('kubernetes') || lower.includes('容器') || lower.includes('pod') || lower.includes('container')
+}
+
 // K8S节点状态表格数据
 const k8sNodeTableData = computed(() => {
   const nodeItems = items.value.filter(i => 
-    i.group_name.toLowerCase().includes('k8s') && 
-    (i.rule_name.includes('节点就绪') || i.rule_name.includes('节点状态') || i.rule_name.toLowerCase().includes('node ready'))
+    isK8SGroup(i.group_name) && 
+    (i.rule_name.includes('节点就绪') || i.rule_name.includes('节点状态') || 
+     i.rule_name.toLowerCase().includes('node ready') || i.rule_name.toLowerCase().includes('node status'))
   )
   
   return nodeItems.map(item => ({
@@ -572,68 +646,90 @@ const k8sNodeTableData = computed(() => {
 // K8S Pod状态表格数据
 const k8sPodTableData = computed(() => {
   const podItems = items.value.filter(i => 
-    i.group_name.toLowerCase().includes('k8s') && 
-    (i.rule_name.includes('Pod状态') || i.rule_name.includes('Pod运行'))
+    isK8SGroup(i.group_name) && 
+    (i.rule_name.includes('Pod状态') || i.rule_name.includes('Pod运行') || 
+     i.rule_name.toLowerCase().includes('pod status'))
   )
   
-  return podItems.map(item => ({
-    namespace: getLabelValue(item.labels, 'namespace') || getLabelValue(item.labels, 'exported_namespace') || 'default',
-    pod: getLabelValue(item.labels, 'pod') || getLabelValue(item.labels, 'pod_name') || item.instance,
-    status: getPodStatusText(item.value, getLabelValue(item.labels, 'status'))
-  }))
+  return podItems.map(item => {
+    const labels = parseLabels(item.labels)
+    return {
+      namespace: labels.namespace || labels.exported_namespace || 'default',
+      pod: labels.pod || labels.pod_name || stripPort(item.instance),
+      status: labels.status || getPodStatusText(item.value)
+    }
+  })
 })
 
 // K8S证书状态表格数据
 const k8sCertTableData = computed(() => {
   const certItems = items.value.filter(i => 
-    i.group_name.toLowerCase().includes('k8s') && 
+    isK8SGroup(i.group_name) && 
     (i.rule_name.includes('证书') || i.rule_name.toLowerCase().includes('certificate'))
   )
   
-  return certItems.map(item => ({
-    instance: stripPort(item.instance),
-    certName: getLabelValue(item.labels, 'certname') || getLabelValue(item.labels, 'name') || getLabelValue(item.labels, 'cn') || 'unknown',
-    expiryDays: Math.floor(item.value / 86400)
-  }))
+  return certItems.map(item => {
+    const labels = parseLabels(item.labels)
+    return {
+      instance: stripPort(item.instance),
+      certName: labels.certname || labels.name || labels.cn || labels.subject || 'unknown',
+      expiryDays: Math.floor(item.value / 86400)
+    }
+  })
 })
 
 // K8S PVC使用率表格数据
 const k8sPVCTableData = computed(() => {
   const pvcItems = items.value.filter(i => 
-    i.group_name.toLowerCase().includes('k8s') && 
-    (i.rule_name.includes('PVC') || i.rule_name.includes('持久卷'))
+    isK8SGroup(i.group_name) && 
+    (i.rule_name.includes('PVC') || i.rule_name.includes('持久卷') || i.rule_name.toLowerCase().includes('pvc'))
   )
   
-  return pvcItems.map(item => ({
-    namespace: getLabelValue(item.labels, 'namespace') || getLabelValue(item.labels, 'exported_namespace') || 'default',
-    pvc: getLabelValue(item.labels, 'persistentvolumeclaim') || getLabelValue(item.labels, 'pvc') || 'unknown',
-    usedPercent: item.value.toFixed(2),
-    used: formatBytesToHuman(item.value * 100), // 近似值
-    total: formatBytesToHuman(100 * 1024 * 1024 * 1024) // 近似值
-  }))
+  return pvcItems.map(item => {
+    const labels = parseLabels(item.labels)
+    return {
+      namespace: labels.namespace || labels.exported_namespace || 'default',
+      pvc: labels.persistentvolumeclaim || labels.pvc || 'unknown',
+      usedPercent: item.value.toFixed(2),
+      used: formatBytesToHuman(item.value * 1024 * 1024 * 1024 / 100), // 近似
+      total: formatBytesToHuman(100 * 1024 * 1024 * 1024) // 近似
+    }
+  })
 })
 
-// 进程CPU表格数据
+// 判断是否为进程分组
+const isProcessGroup = (groupName: string): boolean => {
+  const lower = groupName.toLowerCase()
+  return lower.includes('进程') || lower.includes('process')
+}
+
+// 进程CPU表格数据 - 全局top5
 const processCPUTableData = computed(() => {
   const processItems = items.value.filter(i => 
-    (i.group_name.includes('进程') || i.group_name.toLowerCase().includes('process')) && 
-    (i.rule_name.includes('CPU') || i.rule_name.toLowerCase().includes('cpu'))
-  ).slice(0, 5)
+    isProcessGroup(i.group_name) || 
+    (i.rule_name.toLowerCase().includes('cpu') && (i.rule_name.toLowerCase().includes('进程') || i.rule_name.toLowerCase().includes('process')))
+  )
   
-  return processItems.map(item => {
+  // 按值排序，取全局top5
+  const sorted = [...processItems].sort((a, b) => b.value - a.value).slice(0, 5)
+  
+  return sorted.map(item => {
+    const labels = parseLabels(item.labels)
     // 尝试多种可能的进程名标签
-    let processName = getLabelValue(item.labels, 'process') 
-      || getLabelValue(item.labels, 'procname') 
-      || getLabelValue(item.labels, 'comm')
-      || getLabelValue(item.labels, 'cmdline')
-      || getLabelValue(item.labels, 'name')
-      || getLabelValue(item.labels, 'proc') 
-      || getLabelValue(item.labels, 'process_name')
-      || getLabelValue(item.labels, 'app') 
-      || getLabelValue(item.labels, 'app_kubernetes_io_name')
-      || getLabelValue(item.labels, 'container') 
-      || getLabelValue(item.labels, 'container_name')
-      || 'unknown'
+    let processName = labels.process || 
+                      labels.procname || 
+                      labels.comm ||
+                      labels.cmdline ||
+                      labels.name ||
+                      labels.proc ||
+                      labels.process_name ||
+                      labels.app ||
+                      labels.app_kubernetes_io_name ||
+                      labels.container ||
+                      labels.container_name ||
+                      labels.service ||
+                      labels.service_name ||
+                      'unknown'
     
     // 如果进程名太长，截断
     if (processName.length > 30) {
@@ -650,27 +746,32 @@ const processCPUTableData = computed(() => {
   })
 })
 
-// 进程内存表格数据
+// 进程内存表格数据 - 全局top5
 const processMemTableData = computed(() => {
   const processItems = items.value.filter(i => 
-    (i.group_name.includes('进程') || i.group_name.toLowerCase().includes('process')) && 
-    (i.rule_name.includes('内存') || i.rule_name.toLowerCase().includes('memory') || i.rule_name.toLowerCase().includes('mem'))
-  ).slice(0, 5)
+    isProcessGroup(i.group_name) || 
+    (i.rule_name.toLowerCase().includes('内存') && (i.rule_name.toLowerCase().includes('进程') || i.rule_name.toLowerCase().includes('process')))
+  )
   
-  return processItems.map(item => {
-    // 尝试多种可能的进程名标签
-    let processName = getLabelValue(item.labels, 'process') 
-      || getLabelValue(item.labels, 'procname') 
-      || getLabelValue(item.labels, 'comm')
-      || getLabelValue(item.labels, 'cmdline')
-      || getLabelValue(item.labels, 'name')
-      || getLabelValue(item.labels, 'proc') 
-      || getLabelValue(item.labels, 'process_name')
-      || getLabelValue(item.labels, 'app') 
-      || getLabelValue(item.labels, 'app_kubernetes_io_name')
-      || getLabelValue(item.labels, 'container') 
-      || getLabelValue(item.labels, 'container_name')
-      || 'unknown'
+  // 按值排序，取全局top5
+  const sorted = [...processItems].sort((a, b) => b.value - a.value).slice(0, 5)
+  
+  return sorted.map(item => {
+    const labels = parseLabels(item.labels)
+    let processName = labels.process || 
+                      labels.procname || 
+                      labels.comm ||
+                      labels.cmdline ||
+                      labels.name ||
+                      labels.proc ||
+                      labels.process_name ||
+                      labels.app ||
+                      labels.app_kubernetes_io_name ||
+                      labels.container ||
+                      labels.container_name ||
+                      labels.service ||
+                      labels.service_name ||
+                      'unknown'
     
     if (processName.length > 30) {
       processName = processName.substring(0, 30) + '...'
@@ -688,11 +789,19 @@ const processMemTableData = computed(() => {
 
 // 其他分组详情（排除已特殊处理的）
 const otherGroupDetails = computed(() => {
-  const excludeGroups = ['基础资源', 'CPU监控', '内存监控', '磁盘监控', '磁盘IO', '网络IO', 'K8S', 'Kubernetes', 'k8s', '进程', 'Process', 'process']
-  const nonBasicItems = items.value.filter(i => 
-    !excludeGroups.some(g => i.group_name.toLowerCase().includes(g.toLowerCase())) && 
-    !i.show_in_table
-  )
+  // 排除基础资源、磁盘IO、网络IO、K8S、进程等已处理的分组
+  const nonBasicItems = items.value.filter(i => {
+    // show_in_table=true的数据已经在基础资源表格中显示
+    if (i.show_in_table) return false
+    
+    // 排除已特殊处理的分组
+    if (isK8SGroup(i.group_name)) return false
+    if (isProcessGroup(i.group_name)) return false
+    if (isDiskIOGroup(i.group_name)) return false
+    if (isNetworkIOGroup(i.group_name)) return false
+    
+    return true
+  })
   
   const groups: Record<number, { group_id: number; group_name: string; rules: any[] }> = {}
   
@@ -707,17 +816,13 @@ const otherGroupDetails = computed(() => {
     
     let ruleGroup = groups[item.group_id].rules.find(r => r.rule_name === item.rule_name)
     if (!ruleGroup) {
+      const labels = parseLabels(item.labels)
       let columns = [{ prop: 'instance', label: '实例', width: 150 }]
-      if (item.labels) {
-        try {
-          const labels = JSON.parse(item.labels)
-          Object.keys(labels).forEach(key => {
-            if (key !== 'instance' && key !== '__name__') {
-              columns.push({ prop: key, label: key, width: 120 })
-            }
-          })
-        } catch (e) {}
-      }
+      Object.keys(labels).forEach(key => {
+        if (key !== 'instance' && key !== '__name__') {
+          columns.push({ prop: key, label: key, width: 120 })
+        }
+      })
       columns.push({ prop: 'value', label: '值', width: 100 })
       
       ruleGroup = {
@@ -728,18 +833,13 @@ const otherGroupDetails = computed(() => {
       groups[item.group_id].rules.push(ruleGroup)
     }
     
-    let row: any = {
+    const labels = parseLabels(item.labels)
+    const row: any = {
       instance: stripPort(item.instance),
       value: item.value.toFixed(2),
       unit: item.unit,
-      status: item.status
-    }
-    
-    if (item.labels) {
-      try {
-        const labels = JSON.parse(item.labels)
-        Object.assign(row, labels)
-      } catch (e) {}
+      status: item.status,
+      ...labels
     }
     
     ruleGroup.items.push(row)
@@ -749,8 +849,7 @@ const otherGroupDetails = computed(() => {
 })
 
 // Pod状态文本转换
-const getPodStatusText = (value: number, statusLabel?: string | null): string => {
-  if (statusLabel) return statusLabel
+const getPodStatusText = (value: number): string => {
   const statusMap: Record<number, string> = {
     0: 'Unknown',
     1: 'Running',
@@ -772,6 +871,48 @@ const loadReport = async () => {
     summaryForm.value.summary = report.value?.summary || ''
     summaryForm.value.remark = report.value?.remark || ''
     
+    // 调试：打印数据结构
+    console.log('=== 数据调试 ===')
+    console.log('总项目数:', items.value.length)
+    
+    // 打印分组名称
+    const groups = [...new Set(items.value.map(i => i.group_name))]
+    console.log('分组名称:', groups)
+    
+    // 打印基础资源数据
+    const basicItems = items.value.filter(i => isBasicResourceGroup(i.group_name))
+    console.log('基础资源项目数:', basicItems.length)
+    if (basicItems.length > 0) {
+      console.log('基础资源样例:', basicItems.slice(0, 3).map(i => ({
+        rule_name: i.rule_name,
+        instance: i.instance,
+        labels: i.labels
+      })))
+    }
+    
+    // 打印K8S数据
+    const k8sItems = items.value.filter(i => isK8SGroup(i.group_name))
+    console.log('K8S项目数:', k8sItems.length)
+    if (k8sItems.length > 0) {
+      console.log('K8S样例:', k8sItems.slice(0, 3).map(i => ({
+        group_name: i.group_name,
+        rule_name: i.rule_name,
+        instance: i.instance,
+        labels: i.labels
+      })))
+    }
+    
+    // 打印进程数据
+    const processItems = items.value.filter(i => isProcessGroup(i.group_name))
+    console.log('进程项目数:', processItems.length)
+    if (processItems.length > 0) {
+      console.log('进程样例:', processItems.slice(0, 3).map(i => ({
+        rule_name: i.rule_name,
+        instance: i.instance,
+        labels: i.labels
+      })))
+    }
+    
     nextTick(() => {
       renderCharts()
     })
@@ -781,7 +922,6 @@ const loadReport = async () => {
 }
 
 const renderCharts = () => {
-  // 生成日期标签
   const dates = []
   const now = new Date()
   for (let i = 6; i >= 0; i--) {
@@ -790,31 +930,27 @@ const renderCharts = () => {
     dates.push(d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }))
   }
   
-  // 获取所有实例（排除进程相关，只取服务器级别的监控数据）
-  const serverItems = items.value.filter(i => 
-    !i.group_name.includes('进程') && 
-    !i.rule_name.toLowerCase().includes('process') &&
-    i.show_in_table
-  )
+  // 只获取服务器级别的监控数据（排除进程相关）
+  const serverItems = items.value.filter(i => !isProcessGroup(i.group_name) && i.show_in_table)
   const instances = [...new Set(serverItems.map(i => stripPort(i.instance)))]
   
-  // 只获取服务器总体CPU使用率（不包含进程CPU）
+  // 获取CPU、内存、磁盘使用率数据
   const cpuItems = serverItems.filter(i => 
     i.rule_name === 'CPU使用率' || 
     i.rule_name.toLowerCase() === 'cpu usage' ||
-    (i.rule_name.includes('CPU') && !i.rule_name.includes('进程'))
+    (i.rule_name.includes('CPU使用率'))
   )
   
   const memItems = serverItems.filter(i => 
     i.rule_name === '内存使用率' || 
     i.rule_name.toLowerCase() === 'memory usage' ||
-    (i.rule_name.includes('内存') && !i.rule_name.includes('进程'))
+    (i.rule_name.includes('内存使用率'))
   )
   
   const diskItems = serverItems.filter(i => 
     i.rule_name === '磁盘使用率' || 
     i.rule_name.toLowerCase() === 'disk usage' ||
-    (i.rule_name.includes('磁盘') && !i.rule_name.includes('IO') && !i.rule_name.includes('IOPS'))
+    (i.rule_name.includes('磁盘使用率'))
   )
   
   renderTrendCharts(dates, instances, cpuItems, memItems, diskItems)
@@ -827,13 +963,12 @@ const renderTrendCharts = (
   memItems: InspectionItem[],
   diskItems: InspectionItem[]
 ) => {
-  // CPU 趋势图
+  // CPU趋势图
   if (cpuChart.value) {
     const chart = echarts.init(cpuChart.value)
     const series: any[] = []
     
     instances.forEach((instance, idx) => {
-      // 找到该实例的CPU使用率数据
       const item = cpuItems.find(i => stripPort(i.instance) === instance)
       let data: number[] = []
       
@@ -849,7 +984,6 @@ const renderTrendCharts = (
         } catch (e) {}
       }
       
-      // 如果没有趋势数据，使用当前值作为模拟
       if (data.length === 0 && item) {
         data = Array(7).fill(item.value)
       }
@@ -882,12 +1016,7 @@ const renderTrendCharts = (
         bottom: 0,
         type: 'scroll'
       },
-      grid: { 
-        left: '3%', 
-        right: '4%', 
-        bottom: '15%',
-        containLabel: true 
-      },
+      grid: { left: '3%', right: '4%', bottom: '15%', containLabel: true },
       xAxis: { type: 'category', data: dates },
       yAxis: { type: 'value', max: 100, axisLabel: { formatter: '{value}%' } },
       series
@@ -942,17 +1071,8 @@ const renderTrendCharts = (
           return result
         }
       },
-      legend: { 
-        data: series.map(s => s.name),
-        bottom: 0,
-        type: 'scroll'
-      },
-      grid: { 
-        left: '3%', 
-        right: '4%', 
-        bottom: '15%',
-        containLabel: true 
-      },
+      legend: { data: series.map(s => s.name), bottom: 0, type: 'scroll' },
+      grid: { left: '3%', right: '4%', bottom: '15%', containLabel: true },
       xAxis: { type: 'category', data: dates },
       yAxis: { type: 'value', max: 100, axisLabel: { formatter: '{value}%' } },
       series
@@ -1007,17 +1127,8 @@ const renderTrendCharts = (
           return result
         }
       },
-      legend: { 
-        data: series.map(s => s.name),
-        bottom: 0,
-        type: 'scroll'
-      },
-      grid: { 
-        left: '3%', 
-        right: '4%', 
-        bottom: '15%',
-        containLabel: true 
-      },
+      legend: { data: series.map(s => s.name), bottom: 0, type: 'scroll' },
+      grid: { left: '3%', right: '4%', bottom: '15%', containLabel: true },
       xAxis: { type: 'category', data: dates },
       yAxis: { type: 'value', max: 100, axisLabel: { formatter: '{value}%' } },
       series
@@ -1030,43 +1141,22 @@ const handleExport = async () => {
   if (!element) return
   
   try {
-    const canvas = await html2canvas(element, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#fff'
-    })
-    
+    const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: '#fff' })
     const imgWidth = 210
     const pageHeight = 297
     const imgHeight = (canvas.height * imgWidth) / canvas.width
-    
     const pdf = new jsPDF('p', 'mm', 'a4')
     
     let heightLeft = imgHeight
     let position = 0
     
-    pdf.addImage(
-      canvas.toDataURL('image/png'),
-      'PNG',
-      0,
-      position,
-      imgWidth,
-      imgHeight
-    )
-    
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, imgWidth, imgHeight)
     heightLeft -= pageHeight
     
     while (heightLeft > 0) {
       position = heightLeft - imgHeight
       pdf.addPage()
-      pdf.addImage(
-        canvas.toDataURL('image/png'),
-        'PNG',
-        0,
-        position,
-        imgWidth,
-        imgHeight
-      )
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, imgWidth, imgHeight)
       heightLeft -= pageHeight
     }
     
@@ -1079,12 +1169,7 @@ const handleExport = async () => {
 
 const handleSaveSummary = async () => {
   if (!report.value) return
-  
-  await inspectionApi.updateSummary(
-    report.value.id,
-    summaryForm.value.summary,
-    summaryForm.value.remark
-  )
+  await inspectionApi.updateSummary(report.value.id, summaryForm.value.summary, summaryForm.value.remark)
   ElMessage.success('保存成功')
 }
 
@@ -1097,10 +1182,8 @@ const getStatusClass = (status?: string) => {
 const getBasicTableCellClass = ({ row, column }: { row: any; column: any }) => {
   const propName = column.property
   if (!propName) return ''
-  
   const statusKey = propName + 'Status'
   const status = row[statusKey]
-  
   if (status === 'critical') return 'cell-critical'
   if (status === 'warning') return 'cell-warning'
   return ''
@@ -1114,17 +1197,12 @@ const getK8sStatusCellClass = ({ row, column }: { row: any; column: any }) => {
     if (row.status === 'Ready' || row.status === 'Running') return 'cell-ready'
     return 'cell-not-ready'
   }
-  
-  if (propName === 'expiryDays' && row.expiryDays < 30) {
-    return 'cell-warning'
-  }
-  
+  if (propName === 'expiryDays' && row.expiryDays < 30) return 'cell-warning'
   if (propName === 'usedPercent') {
     const percent = parseFloat(row.usedPercent)
     if (percent > 90) return 'cell-critical'
     if (percent > 80) return 'cell-warning'
   }
-  
   return ''
 }
 
@@ -1152,167 +1230,41 @@ const formatDate = (date?: string) => {
   return new Date(date).toLocaleString('zh-CN')
 }
 
-const goBack = () => {
-  router.push('/reports')
-}
+const goBack = () => router.push('/reports')
 
-onMounted(() => {
-  loadReport()
-})
+onMounted(() => loadReport())
 </script>
 
 <style scoped>
-.page-container {
-  background: #fff;
-  padding: 20px;
-  border-radius: 4px;
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.page-header h2 {
-  margin: 0;
-}
-
-.section-card {
-  margin-bottom: 20px;
-}
-
-.section-title {
-  font-weight: bold;
-  font-size: 16px;
-}
-
-.overview-cards {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-}
-
-.overview-card {
-  flex: 1;
-  min-width: 200px;
-  padding: 15px;
-  border: 1px solid #ebeef5;
-  border-radius: 4px;
-  background: #fafafa;
-}
-
-.card-title {
-  font-weight: bold;
-  margin-bottom: 10px;
-  font-size: 14px;
-}
-
-.card-stats {
-  display: flex;
-  gap: 15px;
-}
-
-.stat-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.stat-label {
-  font-size: 12px;
-  color: #999;
-}
-
-.stat-value {
-  font-size: 20px;
-  font-weight: bold;
-}
-
-.stat-value.critical {
-  color: #F56C6C;
-}
-
-.stat-value.warning {
-  color: #E6A23C;
-}
-
-.stat-value.normal {
-  color: #67C23A;
-}
-
-.trend-charts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-}
-
-.chart-container {
-  flex: 1;
-  min-width: 300px;
-}
-
-.chart {
-  width: 100%;
-  height: 300px;
-}
-
-.rule-section {
-  margin-bottom: 20px;
-}
-
-.rule-title {
-  font-weight: bold;
-  margin-bottom: 10px;
-  color: #606266;
-}
-
-/* 状态文字颜色 */
-.status-critical {
-  color: #F56C6C;
-  font-weight: bold;
-}
-
-.status-warning {
-  color: #E6A23C;
-  font-weight: bold;
-}
-
-.status-ready {
-  color: #67C23A;
-  font-weight: bold;
-}
-
-.status-not-ready {
-  color: #F56C6C;
-  font-weight: bold;
-}
+.page-container { background: #fff; padding: 20px; border-radius: 4px; }
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.page-header h2 { margin: 0; }
+.section-card { margin-bottom: 20px; }
+.section-title { font-weight: bold; font-size: 16px; }
+.overview-cards { display: flex; flex-wrap: wrap; gap: 20px; }
+.overview-card { flex: 1; min-width: 200px; padding: 15px; border: 1px solid #ebeef5; border-radius: 4px; background: #fafafa; }
+.card-title { font-weight: bold; margin-bottom: 10px; font-size: 14px; }
+.card-stats { display: flex; gap: 15px; }
+.stat-item { display: flex; flex-direction: column; align-items: center; }
+.stat-label { font-size: 12px; color: #999; }
+.stat-value { font-size: 20px; font-weight: bold; }
+.stat-value.critical { color: #F56C6C; }
+.stat-value.warning { color: #E6A23C; }
+.stat-value.normal { color: #67C23A; }
+.trend-charts { display: flex; flex-wrap: wrap; gap: 20px; }
+.chart-container { flex: 1; min-width: 300px; }
+.chart { width: 100%; height: 300px; }
+.rule-section { margin-bottom: 20px; }
+.rule-title { font-weight: bold; margin-bottom: 10px; color: #606266; }
+.status-critical { color: #F56C6C; font-weight: bold; }
+.status-warning { color: #E6A23C; font-weight: bold; }
+.status-ready { color: #67C23A; font-weight: bold; }
+.status-not-ready { color: #F56C6C; font-weight: bold; }
 </style>
 
 <style>
-/* 单元格背景色 - 需要全局样式 */
-.cell-critical {
-  background-color: #fef0f0 !important;
-  color: #F56C6C !important;
-  font-weight: bold;
-}
-
-.cell-warning {
-  background-color: #fdf6ec !important;
-  color: #E6A23C !important;
-  font-weight: bold;
-}
-
-.cell-ready {
-  background-color: #f0f9eb !important;
-  color: #67C23A !important;
-  font-weight: bold;
-}
-
-.cell-not-ready {
-  background-color: #fef0f0 !important;
-  color: #F56C6C !important;
-  font-weight: bold;
-}
+.cell-critical { background-color: #fef0f0 !important; color: #F56C6C !important; font-weight: bold; }
+.cell-warning { background-color: #fdf6ec !important; color: #E6A23C !important; font-weight: bold; }
+.cell-ready { background-color: #f0f9eb !important; color: #67C23A !important; font-weight: bold; }
+.cell-not-ready { background-color: #fef0f0 !important; color: #F56C6C !important; font-weight: bold; }
 </style>
