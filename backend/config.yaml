@@ -1,6 +1,6 @@
 server:
   port: 5001
-  mode: debug
+  mode: release
 
 database:
   type: sqlite

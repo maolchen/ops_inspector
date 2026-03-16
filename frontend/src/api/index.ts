@@ -1,8 +1,11 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
+// 动态获取 API 基础地址
+// 开发环境：使用 Vite 代理，相对路径 /api
+// 生产环境：使用相对路径 /api（后端服务前端静态文件）
 const api = axios.create({
-  baseURL: 'http://localhost:5001/api',
+  baseURL: '/api',
   timeout: 30000
 })
 

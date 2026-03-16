@@ -1,11 +1,14 @@
 package router
 
 import (
+	"net/http"
 	"ops-inspection/internal/handler"
 	"ops-inspection/internal/middleware"
 	"ops-inspection/internal/model"
 	"ops-inspection/internal/repository"
 	"ops-inspection/internal/service"
+	"os"
+	"path/filepath"
 
 	"github.com/gin-gonic/gin"
 )
@@ -86,6 +89,32 @@ func SetupRouter() *gin.Engine {
 			protected.POST("/inspections/start", inspectionHandler.Start)
 			protected.PUT("/inspections/:id/summary", inspectionHandler.UpdateSummary)
 		}
+	}
+
+	// 服务前端静态文件（生产环境）
+	// 检查 frontend/dist 目录是否存在
+	distPath := "./frontend/dist"
+	if _, err := os.Stat(distPath); os.IsNotExist(err) {
+		// 尝试上级目录（如果在 backend 目录运行）
+		distPath = "../frontend/dist"
+	}
+
+	if _, err := os.Stat(distPath); err == nil {
+		// 静态文件服务
+		r.Static("/assets", filepath.Join(distPath, "assets"))
+		r.StaticFile("/favicon.svg", filepath.Join(distPath, "favicon.svg"))
+		r.StaticFile("/icons.svg", filepath.Join(distPath, "icons.svg"))
+
+		// SPA 路由支持 - 所有非 API 路由返回 index.html
+		r.NoRoute(func(c *gin.Context) {
+			// 如果是 API 请求但路由不存在，返回 404
+			if len(c.Request.URL.Path) >= 4 && c.Request.URL.Path[:4] == "/api" {
+				c.JSON(http.StatusNotFound, gin.H{"error": "接口不存在"})
+				return
+			}
+			// 其他请求返回 index.html（SPA 路由）
+			c.File(filepath.Join(distPath, "index.html"))
+		})
 	}
 
 	return r

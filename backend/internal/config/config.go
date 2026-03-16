@@ -1,6 +1,9 @@
 package config
 
 import (
+	"os"
+	"strconv"
+
 	"github.com/spf13/viper"
 )
 
@@ -43,6 +46,13 @@ func Init(configPath string) error {
 	GlobalConfig = &Config{}
 	if err := viper.Unmarshal(GlobalConfig); err != nil {
 		return err
+	}
+
+	// 支持从环境变量覆盖端口（部署环境使用）
+	if portStr := os.Getenv("PORT"); portStr != "" {
+		if port, err := strconv.Atoi(portStr); err == nil {
+			GlobalConfig.Server.Port = port
+		}
 	}
 
 	return nil
