@@ -768,46 +768,74 @@ const isProcessGroup = (groupName: string): boolean => {
   return lower.includes('进程') || lower.includes('process')
 }
 
-// 进程CPU表格数据 - 全局top5
+// 进程CPU表格数据 - 每台机器的top5（后端查询已按instance分组）
 const processCPUTableData = computed(() => {
   const processItems = items.value.filter(i => 
-    isProcessGroup(i.group_name) || 
-    (i.rule_name.toLowerCase().includes('cpu') && (i.rule_name.toLowerCase().includes('进程') || i.rule_name.toLowerCase().includes('process')))
+    isProcessGroup(i.group_name) && 
+    (i.rule_name.toLowerCase().includes('cpu') || i.rule_name.includes('CPU'))
   )
   
-  // 按值排序，取全局top5
-  const sorted = [...processItems].sort((a, b) => b.value - a.value).slice(0, 5)
-  
-  return sorted.map(item => {
-    const labels = parseLabels(item.labels)
-    return {
-      processName: labels.groupname || 'unknown',
-      instance: stripPort(item.instance),
-      value: `${item.value.toFixed(2)}%`,
-      status: item.status
+  // 按instance分组，每组按值排序
+  const groupedByInstance: Record<string, any[]> = {}
+  processItems.forEach(item => {
+    const instance = stripPort(item.instance)
+    if (!groupedByInstance[instance]) {
+      groupedByInstance[instance] = []
     }
+    groupedByInstance[instance].push(item)
   })
+  
+  // 每个instance按值降序排序，然后合并所有结果
+  const result: any[] = []
+  Object.keys(groupedByInstance).sort().forEach(instance => {
+    const items = groupedByInstance[instance].sort((a, b) => b.value - a.value)
+    items.forEach(item => {
+      const labels = parseLabels(item.labels)
+      result.push({
+        processName: labels.groupname || 'unknown',
+        instance: instance,
+        value: `${(item.value * 100).toFixed(2)}%`,
+        status: item.status
+      })
+    })
+  })
+  
+  return result
 })
 
-// 进程内存表格数据 - 全局top5
+// 进程内存表格数据 - 每台机器的top5（后端查询已按instance分组）
 const processMemTableData = computed(() => {
   const processItems = items.value.filter(i => 
-    isProcessGroup(i.group_name) || 
-    (i.rule_name.toLowerCase().includes('内存') && (i.rule_name.toLowerCase().includes('进程') || i.rule_name.toLowerCase().includes('process')))
+    isProcessGroup(i.group_name) && 
+    (i.rule_name.toLowerCase().includes('内存') || i.rule_name.includes('内存'))
   )
   
-  // 按值排序，取全局top5
-  const sorted = [...processItems].sort((a, b) => b.value - a.value).slice(0, 5)
-  
-  return sorted.map(item => {
-    const labels = parseLabels(item.labels)
-    return {
-      processName: labels.groupname || 'unknown',
-      instance: stripPort(item.instance),
-      value: formatBytesToHuman(item.value),
-      status: item.status
+  // 按instance分组，每组按值排序
+  const groupedByInstance: Record<string, any[]> = {}
+  processItems.forEach(item => {
+    const instance = stripPort(item.instance)
+    if (!groupedByInstance[instance]) {
+      groupedByInstance[instance] = []
     }
+    groupedByInstance[instance].push(item)
   })
+  
+  // 每个instance按值降序排序，然后合并所有结果
+  const result: any[] = []
+  Object.keys(groupedByInstance).sort().forEach(instance => {
+    const items = groupedByInstance[instance].sort((a, b) => b.value - a.value)
+    items.forEach(item => {
+      const labels = parseLabels(item.labels)
+      result.push({
+        processName: labels.groupname || 'unknown',
+        instance: instance,
+        value: formatBytesToHuman(item.value),
+        status: item.status
+      })
+    })
+  })
+  
+  return result
 })
 
 // ==================== 磁盘IO和网络IO相关表格 ====================
