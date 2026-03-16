@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "cd frontend && pnpm dev --port 5000 --host",
     "build": "cd frontend && pnpm install && pnpm build",
-    "start": "cd frontend && pnpm preview --port 5000 --host"
+    "start": "npx serve frontend/dist -l 5000 -s"
   },
   "keywords": ["inspection", "prometheus", "monitoring"],
   "author": "",
