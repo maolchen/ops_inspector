@@ -87,50 +87,72 @@
         </el-table>
       </el-card>
 
-      <!-- K8S节点状态 -->
+      <!-- K8S节点就绪状态 -->
       <el-card class="section-card" v-if="k8sNodeTableData.length > 0">
         <template #header>
           <span class="section-title">K8S节点就绪状态</span>
         </template>
-        <el-table :data="k8sNodeTableData" stripe border size="small" :cell-class-name="getK8sStatusCellClass">
+        <el-table :data="k8sNodeTableData" stripe border size="small">
           <el-table-column prop="node" label="节点" width="150" />
           <el-table-column prop="statusType" label="状态类型" width="120">
-            <template #default>
-              Ready
-            </template>
+            <template #default>Ready</template>
           </el-table-column>
           <el-table-column prop="value" label="值" width="100" />
           <el-table-column prop="status" label="状态" width="100">
             <template #default="{ row }">
-              <span :class="row.status === '正常' ? 'status-normal' : 'status-critical'">
-                {{ row.status }}
+              <span :class="row.value === 0 ? 'status-normal' : 'status-critical'">
+                {{ row.value === 0 ? '正常' : '异常' }}
               </span>
             </template>
           </el-table-column>
         </el-table>
+        <div class="table-note">说明：值=0表示正常，值≠0表示异常</div>
       </el-card>
 
-      <!-- K8S Pod状态 -->
+      <!-- K8S Pod运行状态 -->
       <el-card class="section-card" v-if="k8sPodTableData.length > 0">
         <template #header>
           <span class="section-title">K8S Pod运行状态</span>
         </template>
-        <el-table :data="k8sPodTableData" stripe border size="small" :cell-class-name="getK8sStatusCellClass">
+        <el-table :data="k8sPodTableData" stripe border size="small">
           <el-table-column prop="namespace" label="命名空间" width="150" />
-          <el-table-column prop="pod" label="Pod名" width="300" />
-          <el-table-column prop="value" label="运行状态" width="100">
+          <el-table-column prop="pod" label="Pod名" min-width="300" />
+          <el-table-column prop="value" label="运行状态" width="100" />
+          <el-table-column label="状态" width="100">
             <template #default="{ row }">
-              {{ row.value }}
-            </template>
-          </el-table-column>
-          <el-table-column prop="status" label="状态" width="100">
-            <template #default="{ row }">
-              <span :class="row.status === '正常' ? 'status-normal' : 'status-critical'">
-                {{ row.status }}
+              <span :class="row.value === 1 ? 'status-normal' : 'status-critical'">
+                {{ row.value === 1 ? '正常' : '异常' }}
               </span>
             </template>
           </el-table-column>
         </el-table>
+        <div class="table-note">说明：值=1表示正常，值≠1表示异常</div>
+      </el-card>
+
+      <!-- K8S PVC使用率 -->
+      <el-card class="section-card" v-if="k8sPVCTableData.length > 0">
+        <template #header>
+          <span class="section-title">K8S PVC使用率</span>
+        </template>
+        <el-table :data="k8sPVCTableData" stripe border size="small">
+          <el-table-column prop="pvc" label="PVC名称" min-width="300" />
+          <el-table-column prop="namespace" label="命名空间" width="150" />
+          <el-table-column prop="usedPercent" label="PVC使用率" width="120">
+            <template #default="{ row }">
+              <span :class="row.usedPercent >= 90 ? 'status-critical' : 'status-normal'">
+                {{ row.usedPercent.toFixed(2) }}%
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column label="状态" width="100">
+            <template #default="{ row }">
+              <span :class="row.usedPercent >= 90 ? 'status-critical' : 'status-normal'">
+                {{ row.usedPercent >= 90 ? '异常' : '正常' }}
+              </span>
+            </template>
+          </el-table-column>
+        </el-table>
+        <div class="table-note">说明：值>=90%表示异常，值<90%表示正常</div>
       </el-card>
 
       <!-- K8S证书状态 - 按证书类型分组 -->
@@ -139,62 +161,38 @@
           <template #header>
             <span class="section-title">{{ certType }}</span>
           </template>
-          <el-table :data="certGroup" stripe border size="small" :cell-class-name="getK8sStatusCellClass">
+          <el-table :data="certGroup" stripe border size="small">
             <el-table-column prop="node" label="节点" width="150" />
             <el-table-column prop="value" label="值" width="150">
               <template #default="{ row }">
                 {{ row.value }} 天
               </template>
             </el-table-column>
-            <el-table-column prop="status" label="状态" width="100">
+            <el-table-column label="状态" width="100">
               <template #default="{ row }">
-                <span :class="row.status === '正常' ? 'status-normal' : 'status-warning'">
-                  {{ row.status }}
+                <span :class="row.value >= 30 ? 'status-normal' : 'status-warning'">
+                  {{ row.value >= 30 ? '正常' : '异常' }}
                 </span>
               </template>
             </el-table-column>
           </el-table>
+          <div class="table-note">说明：值>=30天表示正常，值<30天表示异常</div>
         </el-card>
       </template>
-
-      <!-- K8S PVC使用率 -->
-      <el-card class="section-card" v-if="k8sPVCTableData.length > 0">
-        <template #header>
-          <span class="section-title">K8S PVC使用率</span>
-        </template>
-        <el-table :data="k8sPVCTableData" stripe border size="small" :cell-class-name="getK8sStatusCellClass">
-          <el-table-column prop="pvc" label="PVC名称" width="300" />
-          <el-table-column prop="namespace" label="命名空间" width="150" />
-          <el-table-column prop="usedPercent" label="PVC使用率" width="120">
-            <template #default="{ row }">
-              <span :class="getUsageStatusClass(row.usedPercent)">
-                {{ row.usedPercent }}%
-              </span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="status" label="状态" width="100">
-            <template #default="{ row }">
-              <span :class="row.status === '正常' ? 'status-normal' : 'status-critical'">
-                {{ row.status }}
-              </span>
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-card>
 
       <!-- 进程CPU使用率Top5 -->
       <el-card class="section-card" v-if="processCPUTableData.length > 0">
         <template #header>
-          <span class="section-title">进程CPU使用率top5</span>
+          <span class="section-title">进程CPU使用率Top5</span>
         </template>
         <el-table :data="processCPUTableData" stripe border size="small">
           <el-table-column prop="processName" label="进程名" width="200" />
           <el-table-column prop="instance" label="所在机器" width="180" />
           <el-table-column prop="value" label="值" width="120" />
-          <el-table-column prop="status" label="状态" width="100">
+          <el-table-column label="状态" width="100">
             <template #default="{ row }">
-              <span :class="getStatusClass(row.status)">
-                {{ row.statusText }}
+              <span :class="row.status === 'normal' ? 'status-normal' : 'status-warning'">
+                {{ row.status === 'normal' ? '正常' : '告警' }}
               </span>
             </template>
           </el-table-column>
@@ -204,16 +202,16 @@
       <!-- 进程内存使用率Top5 -->
       <el-card class="section-card" v-if="processMemTableData.length > 0">
         <template #header>
-          <span class="section-title">进程内存使用率top5</span>
+          <span class="section-title">进程内存使用率Top5</span>
         </template>
         <el-table :data="processMemTableData" stripe border size="small">
           <el-table-column prop="processName" label="进程名" width="200" />
           <el-table-column prop="instance" label="所在机器" width="180" />
           <el-table-column prop="value" label="值" width="120" />
-          <el-table-column prop="status" label="状态" width="100">
+          <el-table-column label="状态" width="100">
             <template #default="{ row }">
-              <span :class="getStatusClass(row.status)">
-                {{ row.statusText }}
+              <span :class="row.status === 'normal' ? 'status-normal' : 'status-warning'">
+                {{ row.status === 'normal' ? '正常' : '告警' }}
               </span>
             </template>
           </el-table-column>
@@ -351,7 +349,7 @@ const formatUptime = (seconds: number): string => {
   return result || '<1分钟'
 }
 
-// 解析labels JSON（用于调试和通用获取）
+// 解析labels JSON
 const parseLabels = (labelsStr: string): Record<string, string> => {
   if (!labelsStr) return {}
   try {
@@ -388,6 +386,8 @@ const groupStats = computed(() => {
   
   return Object.values(stats)
 })
+
+// ==================== 基础资源详情表格 ====================
 
 // 判断是否为基础资源分组
 const isBasicResourceGroup = (groupName: string): boolean => {
@@ -451,9 +451,9 @@ const basicResourceData = computed(() => {
   const ipRowInfo: Record<string, { startIndex: number; rowCount: number }> = {}
   let currentIndex = 0
   
-  Object.keys(ipDataMap).forEach(ip => {
+  Object.keys(ipDataMap).sort().forEach(ip => {
     const data = ipDataMap[ip]
-    const mountpoints = Array.from(ipMountpoints[ip])
+    const mountpoints = Array.from(ipMountpoints[ip]).sort()
     
     // 记录该IP的起始行
     ipRowInfo[ip] = { startIndex: currentIndex, rowCount: 0 }
@@ -498,13 +498,13 @@ const createBasicRow = (ip: string, data: Record<string, any>, mountpoint: strin
     return undefined
   }
   
-  // CPU相关 - 支持多种规则名称
+  // CPU相关
   const cpuCores = getData(['CPU核心数', 'cpu_cores', 'CPU核心', 'cpu核心'])
   const cpuUsage = getData(['CPU使用率', 'cpu使用率', 'CPU Usage'])
   const uptime = getData(['运行时间', 'uptime', '系统运行时间'])
   const load5 = getData(['5分钟负载', '负载5', 'load5', '系统负载'])
   
-  // 内存相关 - 支持多种规则名称
+  // 内存相关
   const memTotal = getData(['内存总量', 'memory_total', 'Memory Total', '节点内存'])
   const memUsed = getData(['内存使用量', 'memory_used', 'Memory Used'])
   const memUsage = getData(['内存使用率', 'memory_usage', 'Memory Usage'])
@@ -519,9 +519,9 @@ const createBasicRow = (ip: string, data: Record<string, any>, mountpoint: strin
   const tcpTw = getData(['TCP_TW数', 'tcp_tw', 'TCP TimeWait'])
   
   return {
-    _ip: ip, // 保存原始IP用于合并计算
-    _isFirst: isFirst, // 是否是该IP的第一行
-    ip: isFirst ? ip : '', // 非第一行不显示IP
+    _ip: ip,
+    _isFirst: isFirst,
+    ip: isFirst ? ip : '',
     mountpoint: mountpoint || '-',
     cpuCores: isFirst ? (cpuCores ? Math.round(cpuCores.value) : '-') : '',
     cpuUsage: isFirst ? (cpuUsage ? cpuUsage.value.toFixed(2) + '%' : '-') : '',
@@ -543,10 +543,11 @@ const createBasicRow = (ip: string, data: Record<string, any>, mountpoint: strin
 }
 
 // 基础资源表格单元格合并方法
-// 非磁盘列（前8列和后2列）需要合并，磁盘列（mountpoint, diskTotal, diskUsed, diskUsage）不合并
+// 非磁盘列（IP到内存使用率、TCP连接数、TCP_TW数）需要合并
+// 磁盘列（挂载点、磁盘总量、磁盘使用量、磁盘使用率）不合并
 const basicResourceSpanMethod = ({ row, column, rowIndex, columnIndex }: { row: any; column: any; rowIndex: number; columnIndex: number }) => {
-  // 需要合并的列索引：0-7（IP到内存使用率），11-12（TCP连接数、TCP_TW数）
-  // 不需要合并的列索引：8-10（挂载点、磁盘总量、磁盘使用量、磁盘使用率）
+  // 需要合并的列索引：0-7（IP到内存使用率），12-13（TCP连接数、TCP_TW数）
+  // 不需要合并的列索引：8-11（挂载点、磁盘总量、磁盘使用量、磁盘使用率）
   const mergeColumns = [0, 1, 2, 3, 4, 5, 6, 7, 12, 13]
   
   if (mergeColumns.includes(columnIndex)) {
@@ -563,42 +564,19 @@ const basicResourceSpanMethod = ({ row, column, rowIndex, columnIndex }: { row: 
     }
   }
 }
-  
-  // 内存相关 - 支持多种规则名称
-  const memTotal = getData(['内存总量', 'memory_total', 'Memory Total', '节点内存'])
-  const memUsed = getData(['内存使用量', 'memory_used', 'Memory Used'])
-  const memUsage = getData(['内存使用率', 'memory_usage', 'Memory Usage'])
-  
-  // 磁盘相关
-  const diskTotal = getData(['磁盘总量', 'disk_total', 'Disk Total'])
-  const diskUsed = getData(['磁盘使用量', 'disk_used', 'Disk Used'])
-  const diskUsage = getData(['磁盘使用率', 'disk_usage', 'Disk Usage'])
-  
-  // 网络相关
-  const tcpConn = getData(['TCP连接数', 'tcp_conn', 'TCP Connections'])
-  const tcpTw = getData(['TCP_TW数', 'tcp_tw', 'TCP TimeWait'])
-  
-  return {
-    ip: isFirst ? ip : '', // 非第一行不显示IP，视觉上表示同一服务器
-    mountpoint: mountpoint || '-',
-    cpuCores: cpuCores ? Math.round(cpuCores.value) : '-',
-    cpuUsage: cpuUsage ? cpuUsage.value.toFixed(2) + '%' : '-',
-    cpuUsageStatus: cpuUsage?.status || '',
-    uptime: uptime ? formatUptime(uptime.value) : '-',
-    load5: load5 ? load5.value.toFixed(2) : '-',
-    load5Status: load5?.status || '',
-    memTotal: memTotal ? formatBytesToHuman(memTotal.value) : '-',
-    memUsed: memUsed ? formatBytesToHuman(memUsed.value) : '-',
-    memUsage: memUsage ? memUsage.value.toFixed(2) + '%' : '-',
-    memUsageStatus: memUsage?.status || '',
-    diskTotal: diskTotal ? formatBytesToHuman(diskTotal.value) : '-',
-    diskUsed: diskUsed ? formatBytesToHuman(diskUsed.value) : '-',
-    diskUsage: diskUsage ? diskUsage.value.toFixed(2) + '%' : '-',
-    diskUsageStatus: diskUsage?.status || '',
-    tcpConn: tcpConn ? Math.round(tcpConn.value) : '-',
-    tcpTw: tcpTw ? Math.round(tcpTw.value) : '-'
-  }
+
+// 基础资源表格单元格样式
+const getBasicTableCellClass = ({ row, column }: { row: any; column: any }) => {
+  const propName = column.property
+  if (!propName) return ''
+  const statusKey = propName + 'Status'
+  const status = row[statusKey]
+  if (status === 'critical') return 'cell-critical'
+  if (status === 'warning') return 'cell-warning'
+  return ''
 }
+
+// ==================== K8S相关表格 ====================
 
 // 判断是否为K8S分组
 const isK8SGroup = (groupName: string): boolean => {
@@ -606,9 +584,8 @@ const isK8SGroup = (groupName: string): boolean => {
   return lower.includes('k8s') || lower.includes('kubernetes') || lower.includes('容器') || lower.includes('pod') || lower.includes('container')
 }
 
-// K8S节点状态表格数据
-// 数据示例: {node="192.168.0.69"} 值为状态（0=正常/Ready, 其他值=异常/NotReady）
-// 节点需要去重，状态类型固定为"Ready"
+// K8S节点就绪状态表格数据
+// 值=0表示正常，值≠0表示异常
 const k8sNodeTableData = computed(() => {
   const nodeItems = items.value.filter(i => 
     isK8SGroup(i.group_name) && 
@@ -617,7 +594,7 @@ const k8sNodeTableData = computed(() => {
   )
   
   // 节点去重
-  const nodeMap: Record<string, { node: string; statusType: string; value: number; status: string }> = {}
+  const nodeMap: Record<string, { node: string; statusType: string; value: number }> = {}
   
   nodeItems.forEach(item => {
     const labels = parseLabels(item.labels)
@@ -627,8 +604,7 @@ const k8sNodeTableData = computed(() => {
       nodeMap[node] = {
         node,
         statusType: 'Ready',
-        value: item.value,
-        status: item.value === 0 ? '正常' : '异常'  // 0表示正常
+        value: item.value
       }
     }
   })
@@ -636,10 +612,8 @@ const k8sNodeTableData = computed(() => {
   return Object.values(nodeMap)
 })
 
-// K8S Pod状态表格数据
-// 数据示例: {namespace="cattle-system", pod="rancher-74545784-5wgcf"} 1
-// 表格展示：命名空间、Pod名、运行状态（值）、状态
-// 状态判断：值=1正常(绿色)，值≠1异常(红色)
+// K8S Pod运行状态表格数据
+// 值=1表示正常，值≠1表示异常
 const k8sPodTableData = computed(() => {
   const podItems = items.value.filter(i => 
     isK8SGroup(i.group_name) && 
@@ -652,27 +626,43 @@ const k8sPodTableData = computed(() => {
     return {
       namespace: labels.namespace || 'default',
       pod: labels.pod || stripPort(item.instance),
-      value: item.value,
-      status: item.value === 1 ? '正常' : '异常'
+      value: item.value
+    }
+  })
+})
+
+// K8S PVC使用率表格数据
+// 列顺序：PVC名称、命名空间、PVC使用率、状态
+// 值>=90%表示异常
+const k8sPVCTableData = computed(() => {
+  const pvcItems = items.value.filter(i => 
+    isK8SGroup(i.group_name) && 
+    (i.rule_name.includes('PVC') || i.rule_name.includes('持久卷') || i.rule_name.toLowerCase().includes('pvc') || i.rule_name.includes('存储卷'))
+  )
+  
+  return pvcItems.map(item => {
+    const labels = parseLabels(item.labels)
+    return {
+      pvc: labels.persistentvolumeclaim || 'unknown',
+      namespace: labels.namespace || 'default',
+      usedPercent: item.value
     }
   })
 })
 
 // K8S证书状态表格数据 - 按证书类型分组
-// 数据示例: {node="k8s-master"} 值为剩余天数
-// 根据规则名分组：Kubelet证书状态、Kubeproxy证书状态、Kubecontroller证书状态
 const k8sCertGroupedData = computed(() => {
   const certItems = items.value.filter(i => 
     isK8SGroup(i.group_name) && 
     (i.rule_name.includes('证书') || i.rule_name.toLowerCase().includes('certificate'))
   )
   
-  const grouped: Record<string, Array<{ node: string; value: number; status: string }>> = {}
+  const grouped: Record<string, Array<{ node: string; value: number }>> = {}
   
   certItems.forEach(item => {
     const labels = parseLabels(item.labels)
     const node = labels.node || labels.instance || stripPort(item.instance)
-    const value = Math.floor(item.value) // 天数
+    const value = Math.floor(item.value)
     
     // 从规则名获取证书类型
     let certType = item.rule_name
@@ -688,39 +678,13 @@ const k8sCertGroupedData = computed(() => {
       grouped[certType] = []
     }
     
-    grouped[certType].push({
-      node,
-      value,
-      status: value >= 30 ? '正常' : '异常' // 小于30天为异常
-    })
+    grouped[certType].push({ node, value })
   })
   
   return grouped
 })
 
-// K8S PVC使用率表格数据
-// 数据示例: {namespace="monitoring", persistentvolumeclaim="alertmanager-main-db-alertmanager-main-0"} 值为使用百分比
-// 去掉已用和总量，增加状态列（根据阈值90%判断）
-const k8sPVCTableData = computed(() => {
-  const pvcItems = items.value.filter(i => 
-    isK8SGroup(i.group_name) && 
-    (i.rule_name.includes('PVC') || i.rule_name.includes('持久卷') || i.rule_name.toLowerCase().includes('pvc') || i.rule_name.includes('存储卷'))
-  )
-  
-  return pvcItems.map(item => {
-    const labels = parseLabels(item.labels)
-    // namespace取namespace标签
-    // pvc取persistentvolumeclaim标签
-    // 状态根据阈值判断（>=90%为异常）
-    const usedPercent = parseFloat(item.value.toFixed(2))
-    return {
-      namespace: labels.namespace || 'default',
-      pvc: labels.persistentvolumeclaim || 'unknown',
-      usedPercent,
-      status: usedPercent >= 90 ? '异常' : '正常'
-    }
-  })
-})
+// ==================== 进程相关表格 ====================
 
 // 判断是否为进程分组
 const isProcessGroup = (groupName: string): boolean => {
@@ -729,7 +693,6 @@ const isProcessGroup = (groupName: string): boolean => {
 }
 
 // 进程CPU表格数据 - 全局top5
-// 数据示例: {groupname="mongod", instance="192.168.0.216:9256", job="process"} 值
 const processCPUTableData = computed(() => {
   const processItems = items.value.filter(i => 
     isProcessGroup(i.group_name) || 
@@ -741,23 +704,16 @@ const processCPUTableData = computed(() => {
   
   return sorted.map(item => {
     const labels = parseLabels(item.labels)
-    // 进程名: groupname 标签
-    // 所在机器: instance 标签
-    // 值: 查询结果值
-    const processName = labels.groupname || 'unknown'
-    
     return {
+      processName: labels.groupname || 'unknown',
       instance: stripPort(item.instance),
-      processName,
       value: `${item.value.toFixed(2)}%`,
-      status: item.status,
-      statusText: item.status === 'normal' ? '正常' : item.status === 'warning' ? '告警' : '严重'
+      status: item.status
     }
   })
 })
 
 // 进程内存表格数据 - 全局top5
-// 数据示例: {groupname="mongod", instance="192.168.0.216:9256", job="process"} 值
 const processMemTableData = computed(() => {
   const processItems = items.value.filter(i => 
     isProcessGroup(i.group_name) || 
@@ -769,33 +725,37 @@ const processMemTableData = computed(() => {
   
   return sorted.map(item => {
     const labels = parseLabels(item.labels)
-    // 进程名: groupname 标签
-    // 所在机器: instance 标签
-    const processName = labels.groupname || 'unknown'
-    
     return {
+      processName: labels.groupname || 'unknown',
       instance: stripPort(item.instance),
-      processName,
       value: formatBytesToHuman(item.value),
-      status: item.status,
-      statusText: item.status === 'normal' ? '正常' : item.status === 'warning' ? '告警' : '严重'
+      status: item.status
     }
   })
 })
 
+// ==================== 其他分组详情 ====================
+
+// 判断是否为磁盘IO分组
+const isDiskIOGroup = (groupName: string): boolean => {
+  const lower = groupName.toLowerCase()
+  return lower.includes('磁盘io') || lower.includes('disk io') || lower.includes('diskio')
+}
+
+// 判断是否为网络IO分组
+const isNetworkIOGroup = (groupName: string): boolean => {
+  const lower = groupName.toLowerCase()
+  return lower.includes('网络io') || lower.includes('network io') || lower.includes('networkio')
+}
+
 // 其他分组详情（排除已特殊处理的）
 const otherGroupDetails = computed(() => {
-  // 排除基础资源、磁盘IO、网络IO、K8S、进程等已处理的分组
   const nonBasicItems = items.value.filter(i => {
-    // show_in_table=true的数据已经在基础资源表格中显示
     if (i.show_in_table) return false
-    
-    // 排除已特殊处理的分组
     if (isK8SGroup(i.group_name)) return false
     if (isProcessGroup(i.group_name)) return false
     if (isDiskIOGroup(i.group_name)) return false
     if (isNetworkIOGroup(i.group_name)) return false
-    
     return true
   })
   
@@ -844,18 +804,7 @@ const otherGroupDetails = computed(() => {
   return Object.values(groups)
 })
 
-// Pod状态文本转换
-const getPodStatusText = (value: number): string => {
-  const statusMap: Record<number, string> = {
-    0: 'Unknown',
-    1: 'Running',
-    2: 'Pending',
-    3: 'Succeeded',
-    4: 'Failed',
-    5: 'CrashLoopBackOff'
-  }
-  return statusMap[value] || 'Unknown'
-}
+// ==================== 数据加载与图表渲染 ====================
 
 const loadReport = async () => {
   const id = Number(route.params.id)
@@ -866,48 +815,6 @@ const loadReport = async () => {
     items.value = res.data.items
     summaryForm.value.summary = report.value?.summary || ''
     summaryForm.value.remark = report.value?.remark || ''
-    
-    // 调试：打印数据结构
-    console.log('=== 数据调试 ===')
-    console.log('总项目数:', items.value.length)
-    
-    // 打印分组名称
-    const groups = [...new Set(items.value.map(i => i.group_name))]
-    console.log('分组名称:', groups)
-    
-    // 打印基础资源数据
-    const basicItems = items.value.filter(i => isBasicResourceGroup(i.group_name))
-    console.log('基础资源项目数:', basicItems.length)
-    if (basicItems.length > 0) {
-      console.log('基础资源样例:', basicItems.slice(0, 3).map(i => ({
-        rule_name: i.rule_name,
-        instance: i.instance,
-        labels: i.labels
-      })))
-    }
-    
-    // 打印K8S数据
-    const k8sItems = items.value.filter(i => isK8SGroup(i.group_name))
-    console.log('K8S项目数:', k8sItems.length)
-    if (k8sItems.length > 0) {
-      console.log('K8S样例:', k8sItems.slice(0, 3).map(i => ({
-        group_name: i.group_name,
-        rule_name: i.rule_name,
-        instance: i.instance,
-        labels: i.labels
-      })))
-    }
-    
-    // 打印进程数据
-    const processItems = items.value.filter(i => isProcessGroup(i.group_name))
-    console.log('进程项目数:', processItems.length)
-    if (processItems.length > 0) {
-      console.log('进程样例:', processItems.slice(0, 3).map(i => ({
-        rule_name: i.rule_name,
-        instance: i.instance,
-        labels: i.labels
-      })))
-    }
     
     nextTick(() => {
       renderCharts()
@@ -926,11 +833,9 @@ const renderCharts = () => {
     dates.push(d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }))
   }
   
-  // 只获取服务器级别的监控数据（排除进程相关）
   const serverItems = items.value.filter(i => !isProcessGroup(i.group_name) && i.show_in_table)
   const instances = [...new Set(serverItems.map(i => stripPort(i.instance)))]
   
-  // 获取CPU、内存、磁盘使用率数据
   const cpuItems = serverItems.filter(i => 
     i.rule_name === 'CPU使用率' || 
     i.rule_name.toLowerCase() === 'cpu usage' ||
@@ -1132,6 +1037,8 @@ const renderTrendCharts = (
   }
 }
 
+// ==================== 操作方法 ====================
+
 const handleExport = async () => {
   const element = document.getElementById('report-content')
   if (!element) return
@@ -1175,63 +1082,6 @@ const getStatusClass = (status?: string) => {
   return ''
 }
 
-const getBasicTableCellClass = ({ row, column }: { row: any; column: any }) => {
-  const propName = column.property
-  if (!propName) return ''
-  const statusKey = propName + 'Status'
-  const status = row[statusKey]
-  if (status === 'critical') return 'cell-critical'
-  if (status === 'warning') return 'cell-warning'
-  return ''
-}
-
-const getK8sStatusCellClass = ({ row, column }: { row: any; column: any }) => {
-  const propName = column.property
-  if (!propName) return ''
-  
-  if (propName === 'status') {
-    if (row.status === 'Ready' || row.status === 'Running') return 'cell-ready'
-    return 'cell-not-ready'
-  }
-  if (propName === 'expiryDays' && row.expiryDays < 30) return 'cell-warning'
-  if (propName === 'usedPercent') {
-    const percent = parseFloat(row.usedPercent)
-    if (percent > 90) return 'cell-critical'
-    if (percent > 80) return 'cell-warning'
-  }
-  return ''
-}
-
-const getPodStatusClass = (status: string) => {
-  if (status === 'Running') return 'status-ready'
-  if (status === 'Pending') return 'status-warning'
-  return 'status-not-ready'
-}
-
-const getCertStatusClass = (days: number) => {
-  if (days < 7) return 'status-critical'
-  if (days < 30) return 'status-warning'
-  return 'status-ready'
-}
-
-const getUsageStatusClass = (percent: number | string) => {
-  const p = typeof percent === 'string' ? parseFloat(percent) : percent
-  if (p > 90) return 'status-critical'
-  if (p > 80) return 'status-warning'
-  return ''
-}
-
-const getIOStatusCellClass = ({ row, column }: { row: any; column: any }) => {
-  const propName = column.property
-  if (!propName) return ''
-  
-  if (propName === 'status') {
-    if (row.status === '正常') return 'cell-ready'
-    return 'cell-warning'
-  }
-  return ''
-}
-
 const formatDate = (date?: string) => {
   if (!date) return '-'
   return new Date(date).toLocaleString('zh-CN')
@@ -1263,16 +1113,13 @@ onMounted(() => loadReport())
 .chart { width: 100%; height: 300px; }
 .rule-section { margin-bottom: 20px; }
 .rule-title { font-weight: bold; margin-bottom: 10px; color: #606266; }
+.table-note { margin-top: 10px; font-size: 12px; color: #909399; }
 .status-critical { color: #F56C6C; font-weight: bold; }
 .status-warning { color: #E6A23C; font-weight: bold; }
-.status-ready { color: #67C23A; font-weight: bold; }
-.status-not-ready { color: #F56C6C; font-weight: bold; }
 .status-normal { color: #67C23A; font-weight: bold; }
 </style>
 
 <style>
 .cell-critical { background-color: #fef0f0 !important; color: #F56C6C !important; font-weight: bold; }
 .cell-warning { background-color: #fdf6ec !important; color: #E6A23C !important; font-weight: bold; }
-.cell-ready { background-color: #f0f9eb !important; color: #67C23A !important; font-weight: bold; }
-.cell-not-ready { background-color: #fef0f0 !important; color: #F56C6C !important; font-weight: bold; }
 </style>
