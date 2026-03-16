@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"ops-inspection/internal/config"
 
-	"gorm.io/driver/sqlite"
+	"github.com/glebarez/sqlite" // 纯 Go 实现，无需 CGO
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
