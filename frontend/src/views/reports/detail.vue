@@ -92,7 +92,7 @@
         <template #header>
           <span class="section-title">K8S节点就绪状态</span>
         </template>
-        <el-table :data="k8sNodeTableData" stripe border size="small">
+        <el-table :data="k8sNodeTableData" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.value === 0 ? 'cell-normal' : 'cell-critical') : ''">
           <el-table-column prop="node" label="节点" width="150" />
           <el-table-column prop="statusType" label="状态类型" width="120">
             <template #default>Ready</template>
@@ -100,9 +100,7 @@
           <el-table-column prop="value" label="值" width="100" />
           <el-table-column prop="status" label="状态" width="100">
             <template #default="{ row }">
-              <span :class="row.value === 0 ? 'status-normal' : 'status-critical'">
-                {{ row.value === 0 ? '正常' : '异常' }}
-              </span>
+              {{ row.value === 0 ? '正常' : '异常' }}
             </template>
           </el-table-column>
         </el-table>
@@ -114,15 +112,13 @@
         <template #header>
           <span class="section-title">K8S Pod运行状态</span>
         </template>
-        <el-table :data="k8sPodTableData" stripe border size="small">
+        <el-table :data="k8sPodTableData" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.value === 1 ? 'cell-normal' : 'cell-critical') : ''">
           <el-table-column prop="namespace" label="命名空间" width="150" />
           <el-table-column prop="pod" label="Pod名" min-width="300" />
           <el-table-column prop="value" label="运行状态" width="100" />
-          <el-table-column label="状态" width="100">
+          <el-table-column prop="status" label="状态" width="100">
             <template #default="{ row }">
-              <span :class="row.value === 1 ? 'status-normal' : 'status-critical'">
-                {{ row.value === 1 ? '正常' : '异常' }}
-              </span>
+              {{ row.value === 1 ? '正常' : '异常' }}
             </template>
           </el-table-column>
         </el-table>
@@ -134,21 +130,17 @@
         <template #header>
           <span class="section-title">K8S PVC使用率</span>
         </template>
-        <el-table :data="k8sPVCTableData" stripe border size="small">
+        <el-table :data="k8sPVCTableData" stripe border size="small" :cell-class-name="({row, column}) => (column.property === 'usedPercent' || column.property === 'status') ? (row.usedPercent >= 90 ? 'cell-critical' : 'cell-normal') : ''">
           <el-table-column prop="pvc" label="PVC名称" min-width="300" />
           <el-table-column prop="namespace" label="命名空间" width="150" />
           <el-table-column prop="usedPercent" label="PVC使用率" width="120">
             <template #default="{ row }">
-              <span :class="row.usedPercent >= 90 ? 'status-critical' : 'status-normal'">
-                {{ row.usedPercent.toFixed(2) }}%
-              </span>
+              {{ row.usedPercent.toFixed(2) }}%
             </template>
           </el-table-column>
-          <el-table-column label="状态" width="100">
+          <el-table-column prop="status" label="状态" width="100">
             <template #default="{ row }">
-              <span :class="row.usedPercent >= 90 ? 'status-critical' : 'status-normal'">
-                {{ row.usedPercent >= 90 ? '异常' : '正常' }}
-              </span>
+              {{ row.usedPercent >= 90 ? '异常' : '正常' }}
             </template>
           </el-table-column>
         </el-table>
@@ -161,18 +153,16 @@
           <template #header>
             <span class="section-title">{{ certType }}</span>
           </template>
-          <el-table :data="certGroup" stripe border size="small">
+          <el-table :data="certGroup" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.value >= 30 ? 'cell-normal' : 'cell-warning') : ''">
             <el-table-column prop="node" label="节点" width="150" />
             <el-table-column prop="value" label="值" width="150">
               <template #default="{ row }">
                 {{ row.value }} 天
               </template>
             </el-table-column>
-            <el-table-column label="状态" width="100">
+            <el-table-column prop="status" label="状态" width="100">
               <template #default="{ row }">
-                <span :class="row.value >= 30 ? 'status-normal' : 'status-warning'">
-                  {{ row.value >= 30 ? '正常' : '异常' }}
-                </span>
+                {{ row.value >= 30 ? '正常' : '异常' }}
               </template>
             </el-table-column>
           </el-table>
@@ -185,15 +175,13 @@
         <template #header>
           <span class="section-title">30分钟内磁盘平均写入值</span>
         </template>
-        <el-table :data="diskWriteTableData" stripe border size="small">
+        <el-table :data="diskWriteTableData" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.status === 'normal' ? 'cell-normal' : 'cell-warning') : ''">
           <el-table-column prop="instance" label="节点" width="150" />
           <el-table-column prop="device" label="设备" width="150" />
           <el-table-column prop="valueFormatted" label="值" width="150" />
-          <el-table-column label="状态" width="100">
+          <el-table-column prop="status" label="状态" width="100">
             <template #default="{ row }">
-              <span :class="row.status === 'normal' ? 'status-normal' : 'status-warning'">
-                {{ row.status === 'normal' ? '正常' : '告警' }}
-              </span>
+              {{ row.status === 'normal' ? '正常' : '告警' }}
             </template>
           </el-table-column>
         </el-table>
@@ -204,15 +192,13 @@
         <template #header>
           <span class="section-title">30分钟内磁盘平均读取值</span>
         </template>
-        <el-table :data="diskReadTableData" stripe border size="small">
+        <el-table :data="diskReadTableData" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.status === 'normal' ? 'cell-normal' : 'cell-warning') : ''">
           <el-table-column prop="instance" label="节点" width="150" />
           <el-table-column prop="device" label="设备" width="150" />
           <el-table-column prop="valueFormatted" label="值" width="150" />
-          <el-table-column label="状态" width="100">
+          <el-table-column prop="status" label="状态" width="100">
             <template #default="{ row }">
-              <span :class="row.status === 'normal' ? 'status-normal' : 'status-warning'">
-                {{ row.status === 'normal' ? '正常' : '告警' }}
-              </span>
+              {{ row.status === 'normal' ? '正常' : '告警' }}
             </template>
           </el-table-column>
         </el-table>
@@ -223,15 +209,13 @@
         <template #header>
           <span class="section-title">30分钟内上传速率</span>
         </template>
-        <el-table :data="networkUploadTableData" stripe border size="small">
+        <el-table :data="networkUploadTableData" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.status === 'normal' ? 'cell-normal' : 'cell-warning') : ''">
           <el-table-column prop="instance" label="节点" width="150" />
           <el-table-column prop="device" label="设备" width="150" />
           <el-table-column prop="valueFormatted" label="值" width="150" />
-          <el-table-column label="状态" width="100">
+          <el-table-column prop="status" label="状态" width="100">
             <template #default="{ row }">
-              <span :class="row.status === 'normal' ? 'status-normal' : 'status-warning'">
-                {{ row.status === 'normal' ? '正常' : '告警' }}
-              </span>
+              {{ row.status === 'normal' ? '正常' : '告警' }}
             </template>
           </el-table-column>
         </el-table>
@@ -242,15 +226,13 @@
         <template #header>
           <span class="section-title">30分钟内下载速率</span>
         </template>
-        <el-table :data="networkDownloadTableData" stripe border size="small">
+        <el-table :data="networkDownloadTableData" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.status === 'normal' ? 'cell-normal' : 'cell-warning') : ''">
           <el-table-column prop="instance" label="节点" width="150" />
           <el-table-column prop="device" label="设备" width="150" />
           <el-table-column prop="valueFormatted" label="值" width="150" />
-          <el-table-column label="状态" width="100">
+          <el-table-column prop="status" label="状态" width="100">
             <template #default="{ row }">
-              <span :class="row.status === 'normal' ? 'status-normal' : 'status-warning'">
-                {{ row.status === 'normal' ? '正常' : '告警' }}
-              </span>
+              {{ row.status === 'normal' ? '正常' : '告警' }}
             </template>
           </el-table-column>
         </el-table>
@@ -261,15 +243,13 @@
         <template #header>
           <span class="section-title">进程CPU使用率Top5</span>
         </template>
-        <el-table :data="processCPUTableData" stripe border size="small">
+        <el-table :data="processCPUTableData" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.status === 'normal' ? 'cell-normal' : 'cell-warning') : ''">
           <el-table-column prop="processName" label="进程名" width="200" />
           <el-table-column prop="instance" label="所在机器" width="180" />
           <el-table-column prop="value" label="值" width="120" />
-          <el-table-column label="状态" width="100">
+          <el-table-column prop="status" label="状态" width="100">
             <template #default="{ row }">
-              <span :class="row.status === 'normal' ? 'status-normal' : 'status-warning'">
-                {{ row.status === 'normal' ? '正常' : '告警' }}
-              </span>
+              {{ row.status === 'normal' ? '正常' : '告警' }}
             </template>
           </el-table-column>
         </el-table>
@@ -280,15 +260,13 @@
         <template #header>
           <span class="section-title">进程内存使用率Top5</span>
         </template>
-        <el-table :data="processMemTableData" stripe border size="small">
+        <el-table :data="processMemTableData" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.status === 'normal' ? 'cell-normal' : 'cell-warning') : ''">
           <el-table-column prop="processName" label="进程名" width="200" />
           <el-table-column prop="instance" label="所在机器" width="180" />
           <el-table-column prop="value" label="值" width="120" />
-          <el-table-column label="状态" width="100">
+          <el-table-column prop="status" label="状态" width="100">
             <template #default="{ row }">
-              <span :class="row.status === 'normal' ? 'status-normal' : 'status-warning'">
-                {{ row.status === 'normal' ? '正常' : '告警' }}
-              </span>
+              {{ row.status === 'normal' ? '正常' : '告警' }}
             </template>
           </el-table-column>
         </el-table>
@@ -309,7 +287,7 @@
           class="rule-section"
         >
           <div class="rule-title">{{ ruleDetail.rule_name }}</div>
-          <el-table :data="ruleDetail.items" stripe size="small" border>
+          <el-table :data="ruleDetail.items" stripe size="small" border :cell-class-name="({row, column}) => column.property === 'value' ? (row.status === 'critical' ? 'cell-critical' : row.status === 'warning' ? 'cell-warning' : row.status === 'normal' ? 'cell-normal' : '') : ''">
             <el-table-column
               v-for="col in ruleDetail.columns"
               :key="col.prop"
@@ -318,9 +296,7 @@
               :width="col.width"
             >
               <template #default="{ row }">
-                <span :class="getStatusClass(row.status)">
-                  {{ row[col.prop] }}{{ row.unit ? ` ${row.unit}` : '' }}
-                </span>
+                {{ row[col.prop] }}{{ row.unit ? ` ${row.unit}` : '' }}
               </template>
             </el-table-column>
           </el-table>
@@ -649,6 +625,7 @@ const getBasicTableCellClass = ({ row, column }: { row: any; column: any }) => {
   const status = row[statusKey]
   if (status === 'critical') return 'cell-critical'
   if (status === 'warning') return 'cell-warning'
+  if (status === 'normal') return 'cell-normal'
   return ''
 }
 
@@ -1319,12 +1296,23 @@ onMounted(() => loadReport())
 .rule-section { margin-bottom: 20px; }
 .rule-title { font-weight: bold; margin-bottom: 10px; color: #606266; }
 .table-note { margin-top: 10px; font-size: 12px; color: #909399; }
-.status-critical { color: #F56C6C; font-weight: bold; }
-.status-warning { color: #E6A23C; font-weight: bold; }
-.status-normal { color: #67C23A; font-weight: bold; }
 </style>
 
 <style>
-.cell-critical { background-color: #fef0f0 !important; color: #F56C6C !important; font-weight: bold; }
-.cell-warning { background-color: #fdf6ec !important; color: #E6A23C !important; font-weight: bold; }
+/* 状态单元格背景色样式 */
+.cell-normal { 
+  background-color: #f0f9eb !important; 
+  color: #67C23A !important; 
+  font-weight: bold;
+}
+.cell-warning { 
+  background-color: #fdf6ec !important; 
+  color: #E6A23C !important; 
+  font-weight: bold;
+}
+.cell-critical { 
+  background-color: #fef0f0 !important; 
+  color: #F56C6C !important; 
+  font-weight: bold;
+}
 </style>
