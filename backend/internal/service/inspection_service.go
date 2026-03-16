@@ -36,7 +36,7 @@ func (s *InspectionService) StartInspection(projectID uint, inspector string) (*
 		return nil, err
 	}
 
-	// 创建报告记录
+	// 创建报告记录（不先保存到数据库）
 	report := &model.InspectionReport{
 		ProjectID:   projectID,
 		ProjectName: project.Name,
@@ -45,18 +45,14 @@ func (s *InspectionService) StartInspection(projectID uint, inspector string) (*
 		Status:      "running",
 	}
 
-	if err := s.reportRepo.Create(report); err != nil {
-		return nil, err
-	}
-
 	// 获取适用的规则
 	rules, err := s.ruleRepo.GetByProjectScope(project.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	// 执行巡检
-	items := s.executeInspection(rules, project, report.ID)
+	// 执行巡检（report.ID 为 0，后续会由数据库自动生成）
+	items := s.executeInspection(rules, project)
 
 	// 更新报告统计
 	report.EndTime = time.Now()
@@ -71,12 +67,7 @@ func (s *InspectionService) StartInspection(projectID uint, inspector string) (*
 		}
 	}
 
-	// 保存巡检项
-	for i := range items {
-		items[i].ReportID = report.ID
-	}
-
-	// 更新报告
+	// 使用事务一次性保存报告和巡检项
 	if err := s.reportRepo.CreateWithItems(report, items); err != nil {
 		return nil, err
 	}
@@ -85,7 +76,7 @@ func (s *InspectionService) StartInspection(projectID uint, inspector string) (*
 }
 
 // executeInspection 执行巡检采集
-func (s *InspectionService) executeInspection(rules []model.Rule, project *model.Project, reportID uint) []model.InspectionItem {
+func (s *InspectionService) executeInspection(rules []model.Rule, project *model.Project) []model.InspectionItem {
 	var items []model.InspectionItem
 
 	for _, rule := range rules {
@@ -98,7 +89,6 @@ func (s *InspectionService) executeInspection(rules []model.Rule, project *model
 		// 处理查询结果
 		for _, result := range results {
 			item := model.InspectionItem{
-				ReportID:    reportID,
 				RuleID:      rule.ID,
 				GroupID:     rule.GroupID,
 				GroupName:   rule.Group.Name,

@@ -21,8 +21,9 @@ func InitDB(cfg *config.DatabaseConfig) error {
 		logLevel = logger.Warn
 	}
 
-	// 连接数据库
-	DB, err = gorm.Open(sqlite.Open(cfg.Path), &gorm.Config{
+	// 连接数据库 - 使用共享缓存内存数据库
+	dsn := "file:inspection.db?mode=memory&cache=shared"
+	DB, err = gorm.Open(sqlite.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logLevel),
 	})
 	if err != nil {
