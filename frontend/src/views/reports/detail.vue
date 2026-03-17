@@ -93,12 +93,12 @@
           <span class="section-title">K8S节点就绪状态</span>
         </template>
         <el-table :data="k8sNodeTableData" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.value === 0 ? 'cell-normal' : 'cell-critical') : ''">
-          <el-table-column prop="node" label="节点" width="150" />
-          <el-table-column prop="statusType" label="状态类型" width="120">
+          <el-table-column prop="node" label="节点" min-width="200" />
+          <el-table-column prop="statusType" label="状态类型" width="100">
             <template #default>Ready</template>
           </el-table-column>
-          <el-table-column prop="value" label="值" width="100" />
-          <el-table-column prop="status" label="状态" width="100">
+          <el-table-column prop="value" label="值" width="80" />
+          <el-table-column prop="status" label="状态" width="80">
             <template #default="{ row }">
               {{ row.value === 0 ? '正常' : '异常' }}
             </template>
