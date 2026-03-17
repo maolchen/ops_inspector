@@ -99,7 +99,7 @@ async function handleCommand(command: string) {
       // 用户取消
     }
   } else if (command === 'settings') {
-    router.push('/settings')
+    router.push('/profile')
   }
 }
 </script>

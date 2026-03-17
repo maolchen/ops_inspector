@@ -47,6 +47,12 @@ const routes = [
     name: 'Settings',
     component: () => import('../views/settings/index.vue'),
     meta: { title: '系统设置' }
+  },
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: () => import('../views/profile/index.vue'),
+    meta: { title: '个人设置' }
   }
 ]
 

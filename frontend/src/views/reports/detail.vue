@@ -147,27 +147,26 @@
         <div class="table-note">说明：值>=90%表示异常，值<90%表示正常</div>
       </el-card>
 
-      <!-- K8S证书状态 - 按证书类型分组（双列布局） -->
-      <div class="dual-column-cards" v-if="Object.keys(k8sCertGroupedData).length > 0">
+      <!-- K8S证书状态 - 三列布局 -->
+      <div class="triple-column-cards" v-if="Object.keys(k8sCertGroupedData).length > 0">
         <template v-for="(certGroup, certType) in k8sCertGroupedData" :key="certType">
-          <el-card class="section-card half-width" v-if="certGroup.length > 0">
+          <el-card class="section-card third-width" v-if="certGroup.length > 0">
             <template #header>
               <span class="section-title">{{ certType }}</span>
             </template>
             <el-table :data="certGroup" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.value >= 30 ? 'cell-normal' : 'cell-warning') : ''">
-              <el-table-column prop="node" label="节点" min-width="150" />
-              <el-table-column prop="value" label="值" width="100">
+              <el-table-column prop="node" label="节点" min-width="120" />
+              <el-table-column prop="value" label="值" width="80">
                 <template #default="{ row }">
-                  {{ row.value }} 天
+                  {{ row.value }}天
                 </template>
               </el-table-column>
-              <el-table-column prop="status" label="状态" width="80">
+              <el-table-column prop="status" label="状态" width="60">
                 <template #default="{ row }">
                   {{ row.value >= 30 ? '正常' : '异常' }}
                 </template>
               </el-table-column>
             </el-table>
-            <div class="table-note">说明：值>=30天表示正常，值<30天表示异常</div>
           </el-card>
         </template>
       </div>
@@ -1406,6 +1405,31 @@ onMounted(() => loadReport())
 }
 .dual-column-cards .section-card.half-width :deep(.el-table__body-wrapper) {
   width: 100% !important;
+}
+
+/* 三列卡片布局 */
+.triple-column-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+.triple-column-cards .section-card.third-width {
+  flex: 1 1 calc(33.33% - 10px);
+  min-width: 280px;
+  margin-bottom: 0;
+}
+.triple-column-cards .section-card.third-width :deep(.el-card__body) {
+  padding: 12px;
+}
+.triple-column-cards .section-card.third-width :deep(.el-table) {
+  width: 100%;
+}
+.triple-column-cards .section-card.third-width :deep(.el-table th) {
+  padding: 6px 0;
+}
+.triple-column-cards .section-card.third-width :deep(.el-table td) {
+  padding: 6px 0;
 }
 
 /* 富文本编辑器样式 */
