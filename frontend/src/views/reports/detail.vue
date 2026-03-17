@@ -84,225 +84,91 @@
         </el-table>
       </el-card>
 
-      <!-- K8S节点就绪状态 -->
-      <el-card class="section-card" v-if="k8sNodeTableData.length > 0">
-        <template #header>
-          <span class="section-title">K8S节点就绪状态</span>
-        </template>
-        <el-table :data="k8sNodeTableData" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.value === 0 ? 'cell-normal' : 'cell-critical') : ''">
-          <el-table-column prop="node" label="节点" min-width="200" />
-          <el-table-column prop="statusType" label="状态类型" width="100">
-            <template #default>Ready</template>
-          </el-table-column>
-          <el-table-column prop="value" label="值" width="80" />
-          <el-table-column prop="status" label="状态" width="80">
-            <template #default="{ row }">
-              {{ row.value === 0 ? '正常' : '异常' }}
-            </template>
-          </el-table-column>
-        </el-table>
-        <div class="table-note">说明：值=0表示正常，值≠0表示异常</div>
-      </el-card>
-
-      <!-- K8S Pod运行状态 -->
-      <el-card class="section-card" v-if="k8sPodTableData.length > 0">
-        <template #header>
-          <span class="section-title">K8S Pod运行状态</span>
-        </template>
-        <el-table :data="k8sPodTableData" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.value === 1 ? 'cell-normal' : 'cell-critical') : ''">
-          <el-table-column prop="namespace" label="命名空间" width="150" />
-          <el-table-column prop="pod" label="Pod名" min-width="300" />
-          <el-table-column prop="value" label="运行状态" width="100" />
-          <el-table-column prop="status" label="状态" width="100">
-            <template #default="{ row }">
-              {{ row.value === 1 ? '正常' : '异常' }}
-            </template>
-          </el-table-column>
-        </el-table>
-        <div class="table-note">说明：值=1表示正常，值≠1表示异常</div>
-      </el-card>
-
-      <!-- K8S PVC使用率 -->
-      <el-card class="section-card" v-if="k8sPVCTableData.length > 0">
-        <template #header>
-          <span class="section-title">K8S PVC使用率</span>
-        </template>
-        <el-table :data="k8sPVCTableData" stripe border size="small" :cell-class-name="({row, column}) => (column.property === 'usedPercent' || column.property === 'status') ? (row.usedPercent >= 90 ? 'cell-critical' : 'cell-normal') : ''">
-          <el-table-column prop="pvc" label="PVC名称" min-width="300" />
-          <el-table-column prop="namespace" label="命名空间" width="150" />
-          <el-table-column prop="usedPercent" label="PVC使用率" width="120">
-            <template #default="{ row }">
-              {{ row.usedPercent.toFixed(2) }}%
-            </template>
-          </el-table-column>
-          <el-table-column prop="status" label="状态" width="100">
-            <template #default="{ row }">
-              {{ row.usedPercent >= 90 ? '异常' : '正常' }}
-            </template>
-          </el-table-column>
-        </el-table>
-        <div class="table-note">说明：值>=90%表示异常，值<90%表示正常</div>
-      </el-card>
-
-      <!-- K8S证书状态 - 三列布局 -->
-      <div class="triple-column-cards" v-if="Object.keys(k8sCertGroupedData).length > 0">
-        <template v-for="(certGroup, certType) in k8sCertGroupedData" :key="certType">
-          <el-card class="section-card third-width" v-if="certGroup.length > 0">
+      <!-- 动态表格：一条规则一张表 -->
+      <template v-for="[groupName, tables] in dynamicTablesByGroup" :key="groupName">
+        <!-- 分组标题 -->
+        <div class="group-section-header">{{ groupName }}</div>
+        
+        <!-- 三列布局（列数≤3） -->
+        <div class="triple-column-cards" v-if="tables.filter(t => getTableLayout(t.columnCount) === 'triple').length > 0">
+          <el-card 
+            v-for="table in tables.filter(t => getTableLayout(t.columnCount) === 'triple')" 
+            :key="table.ruleName"
+            class="section-card third-width"
+          >
             <template #header>
-              <span class="section-title">{{ certType }}</span>
+              <span class="section-title">{{ table.ruleName }}</span>
             </template>
-            <el-table :data="certGroup" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.value >= 30 ? 'cell-normal' : 'cell-warning') : ''">
-              <el-table-column prop="node" label="节点" min-width="120" />
-              <el-table-column prop="value" label="值" width="80">
+            <el-table 
+              :data="table.data" 
+              stripe 
+              border 
+              size="small"
+              :cell-class-name="({row, column}) => getDynamicTableCellClass(row, table.columns.find(c => c.prop === column.property)!, table.ruleType)"
+            >
+              <el-table-column
+                v-for="col in table.columns"
+                :key="col.prop"
+                :prop="col.prop"
+                :label="col.label"
+                :min-width="col.width || 100"
+              >
                 <template #default="{ row }">
-                  {{ row.value }}天
-                </template>
-              </el-table-column>
-              <el-table-column prop="status" label="状态" width="60">
-                <template #default="{ row }">
-                  {{ row.value >= 30 ? '正常' : '异常' }}
+                  <template v-if="col.prop === '_value'">
+                    {{ row._valueFormatted }}
+                  </template>
+                  <template v-else-if="col.prop === '_status'">
+                    {{ row._status === 'normal' ? '正常' : row._status === 'warning' ? '告警' : row._status === 'critical' ? '异常' : '-' }}
+                  </template>
+                  <template v-else>
+                    {{ row[col.prop] || '-' }}
+                  </template>
                 </template>
               </el-table-column>
             </el-table>
+            <div class="table-note" v-if="getThresholdNote(table)">{{ getThresholdNote(table) }}</div>
           </el-card>
-        </template>
-      </div>
-
-      <!-- 磁盘IO表格（双列布局） -->
-      <div class="dual-column-cards" v-if="diskWriteTableData.length > 0 || diskReadTableData.length > 0">
-        <el-card class="section-card half-width" v-if="diskWriteTableData.length > 0">
-          <template #header>
-            <span class="section-title">30分钟内磁盘平均写入值</span>
-          </template>
-          <el-table :data="diskWriteTableData" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.status === 'normal' ? 'cell-normal' : 'cell-warning') : ''">
-            <el-table-column prop="instance" label="节点" min-width="120" />
-            <el-table-column prop="device" label="设备" min-width="100" />
-            <el-table-column prop="valueFormatted" label="值" width="100" />
-            <el-table-column prop="status" label="状态" width="70">
-              <template #default="{ row }">
-                {{ row.status === 'normal' ? '正常' : '告警' }}
-              </template>
-            </el-table-column>
-          </el-table>
-        </el-card>
-
-        <el-card class="section-card half-width" v-if="diskReadTableData.length > 0">
-          <template #header>
-            <span class="section-title">30分钟内磁盘平均读取值</span>
-          </template>
-          <el-table :data="diskReadTableData" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.status === 'normal' ? 'cell-normal' : 'cell-warning') : ''">
-            <el-table-column prop="instance" label="节点" min-width="120" />
-            <el-table-column prop="device" label="设备" min-width="100" />
-            <el-table-column prop="valueFormatted" label="值" width="100" />
-            <el-table-column prop="status" label="状态" width="70">
-              <template #default="{ row }">
-                {{ row.status === 'normal' ? '正常' : '告警' }}
-              </template>
-            </el-table-column>
-          </el-table>
-        </el-card>
-      </div>
-
-      <!-- 网络IO表格（双列布局） -->
-      <div class="dual-column-cards" v-if="networkUploadTableData.length > 0 || networkDownloadTableData.length > 0">
-        <el-card class="section-card half-width" v-if="networkUploadTableData.length > 0">
-          <template #header>
-            <span class="section-title">30分钟内上传速率</span>
-          </template>
-          <el-table :data="networkUploadTableData" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.status === 'normal' ? 'cell-normal' : 'cell-warning') : ''">
-            <el-table-column prop="instance" label="节点" min-width="120" />
-            <el-table-column prop="device" label="设备" min-width="100" />
-            <el-table-column prop="valueFormatted" label="值" width="100" />
-            <el-table-column prop="status" label="状态" width="70">
-              <template #default="{ row }">
-                {{ row.status === 'normal' ? '正常' : '告警' }}
-              </template>
-            </el-table-column>
-          </el-table>
-        </el-card>
-
-        <el-card class="section-card half-width" v-if="networkDownloadTableData.length > 0">
-          <template #header>
-            <span class="section-title">30分钟内下载速率</span>
-          </template>
-          <el-table :data="networkDownloadTableData" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.status === 'normal' ? 'cell-normal' : 'cell-warning') : ''">
-            <el-table-column prop="instance" label="节点" min-width="120" />
-            <el-table-column prop="device" label="设备" min-width="100" />
-            <el-table-column prop="valueFormatted" label="值" width="100" />
-            <el-table-column prop="status" label="状态" width="70">
-              <template #default="{ row }">
-                {{ row.status === 'normal' ? '正常' : '告警' }}
-              </template>
-            </el-table-column>
-          </el-table>
-        </el-card>
-      </div>
-
-      <!-- 进程TOP表格（双列布局） -->
-      <div class="dual-column-cards" v-if="processCPUTableData.length > 0 || processMemTableData.length > 0">
-        <el-card class="section-card half-width" v-if="processCPUTableData.length > 0">
-          <template #header>
-            <span class="section-title">进程CPU使用率Top5</span>
-          </template>
-          <el-table :data="processCPUTableData" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.status === 'normal' ? 'cell-normal' : 'cell-warning') : ''">
-            <el-table-column prop="processName" label="进程名" min-width="150" />
-            <el-table-column prop="instance" label="所在机器" min-width="120" />
-            <el-table-column prop="value" label="值" width="80" />
-            <el-table-column prop="status" label="状态" width="70">
-              <template #default="{ row }">
-                {{ row.status === 'normal' ? '正常' : '告警' }}
-              </template>
-            </el-table-column>
-          </el-table>
-        </el-card>
-
-        <el-card class="section-card half-width" v-if="processMemTableData.length > 0">
-          <template #header>
-            <span class="section-title">进程内存使用率Top5</span>
-          </template>
-          <el-table :data="processMemTableData" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.status === 'normal' ? 'cell-normal' : 'cell-warning') : ''">
-            <el-table-column prop="processName" label="进程名" min-width="150" />
-            <el-table-column prop="instance" label="所在机器" min-width="120" />
-            <el-table-column prop="value" label="值" width="80" />
-            <el-table-column prop="status" label="状态" width="70">
-              <template #default="{ row }">
-                {{ row.status === 'normal' ? '正常' : '告警' }}
-              </template>
-            </el-table-column>
-          </el-table>
-        </el-card>
-      </div>
-
-      <!-- 其他分组详情 -->
-      <el-card
-        v-for="groupDetail in otherGroupDetails"
-        :key="groupDetail.group_id"
-        class="section-card"
-      >
-        <template #header>
-          <span class="section-title">{{ groupDetail.group_name }}</span>
-        </template>
-        <div
-          v-for="ruleDetail in groupDetail.rules"
-          :key="ruleDetail.rule_name"
-          class="rule-section"
+        </div>
+        
+        <!-- 全宽布局（列数>3） -->
+        <el-card 
+          v-for="table in tables.filter(t => getTableLayout(t.columnCount) === 'full')" 
+          :key="table.ruleName"
+          class="section-card"
         >
-          <div class="rule-title">{{ ruleDetail.rule_name }}</div>
-          <el-table :data="ruleDetail.items" stripe size="small" border :cell-class-name="({row, column}) => column.property === 'value' ? (row.status === 'critical' ? 'cell-critical' : row.status === 'warning' ? 'cell-warning' : row.status === 'normal' ? 'cell-normal' : '') : ''">
+          <template #header>
+            <span class="section-title">{{ table.ruleName }}</span>
+          </template>
+          <el-table 
+            :data="table.data" 
+            stripe 
+            border 
+            size="small"
+            :cell-class-name="({row, column}) => getDynamicTableCellClass(row, table.columns.find(c => c.prop === column.property)!, table.ruleType)"
+          >
             <el-table-column
-              v-for="col in ruleDetail.columns"
+              v-for="col in table.columns"
               :key="col.prop"
               :prop="col.prop"
               :label="col.label"
-              :width="col.width"
+              :min-width="col.width || 120"
             >
               <template #default="{ row }">
-                {{ row[col.prop] }}{{ row.unit ? ` ${row.unit}` : '' }}
+                <template v-if="col.prop === '_value'">
+                  {{ row._valueFormatted }}
+                </template>
+                <template v-else-if="col.prop === '_status'">
+                  {{ row._status === 'normal' ? '正常' : row._status === 'warning' ? '告警' : row._status === 'critical' ? '异常' : '-' }}
+                </template>
+                <template v-else>
+                  {{ row[col.prop] || '-' }}
+                </template>
               </template>
             </el-table-column>
           </el-table>
-        </div>
-      </el-card>
+          <div class="table-note" v-if="getThresholdNote(table)">{{ getThresholdNote(table) }}</div>
+        </el-card>
+      </template>
 
       <!-- 巡检总结 -->
       <el-card class="section-card" id="summary-section">
@@ -757,6 +623,184 @@ const getBasicTableCellClass = ({ row, column }: { row: any; column: any }) => {
   return ''
 }
 
+// ==================== 动态表格（一条规则一张表） ====================
+
+// 动态表格列接口
+interface DynamicTableColumn {
+  prop: string      // 数据字段名（标签key）
+  label: string     // 表头显示名（标签别名）
+  isLabel: boolean  // 是否为标签列
+  width?: number    // 列宽度
+}
+
+// 动态表格配置接口
+interface DynamicTableConfig {
+  ruleId: number
+  ruleName: string
+  groupName: string
+  columns: DynamicTableColumn[]
+  data: any[]
+  ruleType: boolean      // 是否告警类型（决定是否显示背景色）
+  threshold: number | null
+  thresholdType: string
+  unit: string
+  columnCount: number    // 列数量，用于判断布局
+}
+
+// 获取需要动态展示表格的数据
+// 条件：show_in_table=false 或者 不是基础资源分组
+const dynamicTableItems = computed(() => {
+  return items.value.filter(item => 
+    !item.show_in_table || !isBasicResourceGroup(item.group_name)
+  )
+})
+
+// 按规则分组生成表格配置
+const dynamicTablesConfig = computed(() => {
+  const ruleMap = new Map<string, InspectionItem[]>()
+  
+  // 按规则分组
+  dynamicTableItems.value.forEach(item => {
+    const key = `${item.group_name}__${item.rule_name}`
+    if (!ruleMap.has(key)) {
+      ruleMap.set(key, [])
+    }
+    ruleMap.get(key)!.push(item)
+  })
+  
+  // 生成表格配置
+  const tables: DynamicTableConfig[] = []
+  
+  ruleMap.forEach((ruleItems, key) => {
+    if (ruleItems.length === 0) return
+    
+    const firstItem = ruleItems[0]
+    const labels = parseLabels(firstItem.labels || '{}')
+    
+    // 解析标签列为动态列
+    const columns: DynamicTableColumn[] = Object.entries(labels).map(([labelKey, labelAlias]) => ({
+      prop: labelKey,
+      label: labelAlias as string,
+      isLabel: true,
+      width: getLabelColumnWidth(labelKey)
+    }))
+    
+    // 添加值列和状态列
+    columns.push(
+      { prop: '_value', label: '值', isLabel: false, width: 100 },
+      { prop: '_status', label: '状态', isLabel: false, width: 80 }
+    )
+    
+    // 构建表格数据
+    const data = ruleItems.map(item => {
+      const itemLabels = parseLabels(item.labels || '{}')
+      return {
+        ...itemLabels,  // 展开标签
+        _value: item.value,
+        _status: item.status,
+        _raw: item,  // 保留原始数据
+        _valueFormatted: formatValue(item.value, item.unit)
+      }
+    })
+    
+    tables.push({
+      ruleId: firstItem.rule_id,
+      ruleName: firstItem.rule_name,
+      groupName: firstItem.group_name,
+      columns,
+      data,
+      ruleType: firstItem.table_column_rule_type,
+      threshold: firstItem.rule_id ? ruleItems[0].value : null, // TODO: 需要从规则获取阈值
+      thresholdType: '',
+      unit: firstItem.unit,
+      columnCount: columns.length
+    })
+  })
+  
+  // 按规则组名称排序，同组内按规则名称排序
+  return tables.sort((a, b) => {
+    if (a.groupName !== b.groupName) {
+      return a.groupName.localeCompare(b.groupName, 'zh-CN')
+    }
+    return a.ruleName.localeCompare(b.ruleName, 'zh-CN')
+  })
+})
+
+// 按规则组分组
+const dynamicTablesByGroup = computed(() => {
+  const groupMap = new Map<string, DynamicTableConfig[]>()
+  
+  dynamicTablesConfig.value.forEach(table => {
+    if (!groupMap.has(table.groupName)) {
+      groupMap.set(table.groupName, [])
+    }
+    groupMap.get(table.groupName)!.push(table)
+  })
+  
+  return groupMap
+})
+
+// 根据列数判断布局类型
+const getTableLayout = (columnCount: number): 'triple' | 'full' => {
+  return columnCount <= 3 ? 'triple' : 'full'
+}
+
+// 获取标签列宽度
+const getLabelColumnWidth = (labelKey: string): number => {
+  const widthMap: Record<string, number> = {
+    'node': 150,
+    'instance': 130,
+    'namespace': 120,
+    'pod': 200,
+    'persistentvolumeclaim': 200,
+    'pvc': 200,
+    'mountpoint': 100,
+    'device': 100,
+    'groupname': 150
+  }
+  return widthMap[labelKey] || 120
+}
+
+// 动态表格单元格样式
+const getDynamicTableCellClass = (row: any, column: DynamicTableColumn, ruleType: boolean) => {
+  // 只对状态列显示背景色
+  if (column.prop !== '_status') return ''
+  
+  // 如果是展示类型（非告警），不显示背景色
+  if (!ruleType) return ''
+  
+  // 根据状态返回对应样式
+  const status = row._status
+  if (status === 'critical') return 'cell-critical'
+  if (status === 'warning') return 'cell-warning'
+  if (status === 'normal') return 'cell-normal'
+  return ''
+}
+
+// 获取阈值说明文字
+const getThresholdNote = (table: DynamicTableConfig): string => {
+  const rawItem = table.data[0]?._raw
+  if (!rawItem) return ''
+  
+  // 从原始数据中获取阈值信息
+  // 注意：当前 InspectionItem 没有阈值字段，这里简化处理
+  // 可以根据规则类型返回默认说明
+  if (table.ruleName.includes('证书')) {
+    return '说明：值≥30天表示正常，值<30天表示异常'
+  }
+  if (table.ruleName.includes('Pod') || table.ruleName.includes('pod')) {
+    return '说明：值=1表示正常，值≠1表示异常'
+  }
+  if (table.ruleName.includes('节点就绪') || table.ruleName.includes('节点状态')) {
+    return '说明：值=0表示正常，值≠0表示异常'
+  }
+  if (table.ruleName.includes('PVC') || table.ruleName.includes('存储')) {
+    return '说明：值≥90%表示异常，值<90%表示正常'
+  }
+  
+  return ''
+}
+
 // ==================== K8S相关表格 ====================
 
 // 判断是否为K8S分组
@@ -764,363 +808,6 @@ const isK8SGroup = (groupName: string): boolean => {
   const lower = groupName.toLowerCase()
   return lower.includes('k8s') || lower.includes('kubernetes') || lower.includes('容器') || lower.includes('pod') || lower.includes('container')
 }
-
-// K8S节点就绪状态表格数据
-// 值=0表示正常，值≠0表示异常
-const k8sNodeTableData = computed(() => {
-  const nodeItems = items.value.filter(i => 
-    isK8SGroup(i.group_name) && 
-    (i.rule_name.includes('节点就绪') || i.rule_name.includes('节点状态') || 
-     i.rule_name.toLowerCase().includes('node ready') || i.rule_name.toLowerCase().includes('node status'))
-  )
-  
-  // 节点去重
-  const nodeMap: Record<string, { node: string; statusType: string; value: number }> = {}
-  
-  nodeItems.forEach(item => {
-    const labels = parseLabels(item.labels)
-    const node = labels.node || stripPort(item.instance)
-    
-    if (!nodeMap[node]) {
-      nodeMap[node] = {
-        node,
-        statusType: 'Ready',
-        value: item.value
-      }
-    }
-  })
-  
-  return Object.values(nodeMap)
-})
-
-// K8S Pod运行状态表格数据
-// 值=1表示正常，值≠1表示异常
-// 按命名空间排序
-const k8sPodTableData = computed(() => {
-  const podItems = items.value.filter(i => 
-    isK8SGroup(i.group_name) && 
-    (i.rule_name.includes('Pod状态') || i.rule_name.includes('Pod运行') || 
-     i.rule_name.toLowerCase().includes('pod status'))
-  )
-  
-  const data = podItems.map(item => {
-    const labels = parseLabels(item.labels)
-    return {
-      namespace: labels.namespace || 'default',
-      pod: labels.pod || stripPort(item.instance),
-      value: item.value
-    }
-  })
-  
-  // 按命名空间排序
-  return data.sort((a, b) => a.namespace.localeCompare(b.namespace))
-})
-
-// K8S PVC使用率表格数据
-// 列顺序：PVC名称、命名空间、PVC使用率、状态
-// 值>=90%表示异常
-// 按命名空间排序
-const k8sPVCTableData = computed(() => {
-  const pvcItems = items.value.filter(i => 
-    isK8SGroup(i.group_name) && 
-    (i.rule_name.includes('PVC') || i.rule_name.includes('持久卷') || i.rule_name.toLowerCase().includes('pvc') || i.rule_name.includes('存储卷'))
-  )
-  
-  const data = pvcItems.map(item => {
-    const labels = parseLabels(item.labels)
-    return {
-      pvc: labels.persistentvolumeclaim || 'unknown',
-      namespace: labels.namespace || 'default',
-      usedPercent: item.value
-    }
-  })
-  
-  // 按命名空间排序
-  return data.sort((a, b) => a.namespace.localeCompare(b.namespace))
-})
-
-// K8S证书状态表格数据 - 按证书类型分组
-const k8sCertGroupedData = computed(() => {
-  const certItems = items.value.filter(i => 
-    isK8SGroup(i.group_name) && 
-    (i.rule_name.includes('证书') || i.rule_name.toLowerCase().includes('certificate'))
-  )
-  
-  const grouped: Record<string, Array<{ node: string; value: number }>> = {}
-  
-  certItems.forEach(item => {
-    const labels = parseLabels(item.labels)
-    const node = labels.node || labels.instance || stripPort(item.instance)
-    const value = Math.floor(item.value)
-    
-    // 从规则名获取证书类型
-    let certType = item.rule_name
-    if (item.rule_name.includes('Kubelet')) {
-      certType = 'Kubelet证书状态'
-    } else if (item.rule_name.includes('Kubeproxy')) {
-      certType = 'Kubeproxy证书状态'
-    } else if (item.rule_name.includes('Kubecontroller') || item.rule_name.includes('Controller')) {
-      certType = 'Kubecontroller证书状态'
-    }
-    
-    if (!grouped[certType]) {
-      grouped[certType] = []
-    }
-    
-    grouped[certType].push({ node, value })
-  })
-  
-  return grouped
-})
-
-// ==================== 进程相关表格 ====================
-
-// 判断是否为进程分组
-const isProcessGroup = (groupName: string): boolean => {
-  const lower = groupName.toLowerCase()
-  return lower.includes('进程') || lower.includes('process')
-}
-
-// 进程CPU表格数据 - 每台机器的top5（后端查询已按instance分组）
-const processCPUTableData = computed(() => {
-  const processItems = items.value.filter(i => 
-    isProcessGroup(i.group_name) && 
-    (i.rule_name.toLowerCase().includes('cpu') || i.rule_name.includes('CPU'))
-  )
-  
-  // 按instance分组，每组按值排序
-  const groupedByInstance: Record<string, any[]> = {}
-  processItems.forEach(item => {
-    const instance = stripPort(item.instance)
-    if (!groupedByInstance[instance]) {
-      groupedByInstance[instance] = []
-    }
-    groupedByInstance[instance].push(item)
-  })
-  
-  // 每个instance按值降序排序，然后合并所有结果
-  const result: any[] = []
-  Object.keys(groupedByInstance).sort().forEach(instance => {
-    const items = groupedByInstance[instance].sort((a, b) => b.value - a.value)
-    items.forEach(item => {
-      const labels = parseLabels(item.labels)
-      result.push({
-        processName: labels.groupname || 'unknown',
-        instance: instance,
-        value: `${(item.value * 100).toFixed(2)}%`,
-        status: item.status
-      })
-    })
-  })
-  
-  return result
-})
-
-// 进程内存表格数据 - 每台机器的top5（后端查询已按instance分组）
-const processMemTableData = computed(() => {
-  const processItems = items.value.filter(i => 
-    isProcessGroup(i.group_name) && 
-    (i.rule_name.toLowerCase().includes('内存') || i.rule_name.includes('内存'))
-  )
-  
-  // 按instance分组，每组按值排序
-  const groupedByInstance: Record<string, any[]> = {}
-  processItems.forEach(item => {
-    const instance = stripPort(item.instance)
-    if (!groupedByInstance[instance]) {
-      groupedByInstance[instance] = []
-    }
-    groupedByInstance[instance].push(item)
-  })
-  
-  // 每个instance按值降序排序，然后合并所有结果
-  const result: any[] = []
-  Object.keys(groupedByInstance).sort().forEach(instance => {
-    const items = groupedByInstance[instance].sort((a, b) => b.value - a.value)
-    items.forEach(item => {
-      const labels = parseLabels(item.labels)
-      result.push({
-        processName: labels.groupname || 'unknown',
-        instance: instance,
-        value: formatBytesToHuman(item.value),
-        status: item.status
-      })
-    })
-  })
-  
-  return result
-})
-
-// ==================== 磁盘IO和网络IO相关表格 ====================
-
-// 磁盘平均写入值表格数据
-// 直接根据规则名称识别，不依赖分组名称
-const diskWriteTableData = computed(() => {
-  const diskWriteItems = items.value.filter(i => 
-    i.rule_name.includes('磁盘平均写入') || 
-    i.rule_name.includes('磁盘写入') ||
-    i.rule_name.toLowerCase().includes('disk write') ||
-    i.rule_name.toLowerCase().includes('diskwrite')
-  )
-  
-  return diskWriteItems.map(item => {
-    const labels = parseLabels(item.labels)
-    return {
-      instance: stripPort(item.instance),
-      device: labels.device || '-',
-      value: item.value,
-      valueFormatted: `${item.value.toFixed(2)} MB/s`,
-      status: item.status
-    }
-  })
-})
-
-// 磁盘平均读取值表格数据
-const diskReadTableData = computed(() => {
-  const diskReadItems = items.value.filter(i => 
-    i.rule_name.includes('磁盘平均读取') || 
-    i.rule_name.includes('磁盘读取') ||
-    i.rule_name.toLowerCase().includes('disk read') ||
-    i.rule_name.toLowerCase().includes('diskread')
-  )
-  
-  return diskReadItems.map(item => {
-    const labels = parseLabels(item.labels)
-    return {
-      instance: stripPort(item.instance),
-      device: labels.device || '-',
-      value: item.value,
-      valueFormatted: `${item.value.toFixed(2)} MB/s`,
-      status: item.status
-    }
-  })
-})
-
-// 上传速率表格数据
-const networkUploadTableData = computed(() => {
-  const uploadItems = items.value.filter(i => 
-    i.rule_name.includes('上传速率') || 
-    i.rule_name.includes('上传') ||
-    i.rule_name.toLowerCase().includes('upload rate') ||
-    i.rule_name.toLowerCase().includes('network transmit')
-  )
-  
-  return uploadItems.map(item => {
-    const labels = parseLabels(item.labels)
-    return {
-      instance: stripPort(item.instance),
-      device: labels.device || labels.interface || labels.if || '-',
-      value: item.value,
-      valueFormatted: `${item.value.toFixed(2)} MB/s`,
-      status: item.status
-    }
-  })
-})
-
-// 下载速率表格数据
-const networkDownloadTableData = computed(() => {
-  const downloadItems = items.value.filter(i => 
-    i.rule_name.includes('下载速率') || 
-    i.rule_name.includes('下载') ||
-    i.rule_name.toLowerCase().includes('download rate') ||
-    i.rule_name.toLowerCase().includes('network receive')
-  )
-  
-  return downloadItems.map(item => {
-    const labels = parseLabels(item.labels)
-    return {
-      instance: stripPort(item.instance),
-      device: labels.device || labels.interface || labels.if || '-',
-      value: item.value,
-      valueFormatted: `${item.value.toFixed(2)} MB/s`,
-      status: item.status
-    }
-  })
-})
-
-// ==================== 其他分组详情 ====================
-
-// 判断是否为磁盘IO相关规则
-const isDiskIORule = (ruleName: string): boolean => {
-  const lower = ruleName.toLowerCase()
-  return ruleName.includes('磁盘平均写入') || 
-         ruleName.includes('磁盘平均读取') ||
-         ruleName.includes('磁盘写入') ||
-         ruleName.includes('磁盘读取') ||
-         lower.includes('disk write') ||
-         lower.includes('disk read') ||
-         lower.includes('diskwrite') ||
-         lower.includes('diskread')
-}
-
-// 判断是否为网络IO相关规则
-const isNetworkIORule = (ruleName: string): boolean => {
-  const lower = ruleName.toLowerCase()
-  return ruleName.includes('上传速率') || 
-         ruleName.includes('下载速率') ||
-         ruleName.includes('上传') ||
-         ruleName.includes('下载') ||
-         lower.includes('upload rate') ||
-         lower.includes('download rate') ||
-         lower.includes('network transmit') ||
-         lower.includes('network receive')
-}
-
-// 其他分组详情（排除已特殊处理的）
-const otherGroupDetails = computed(() => {
-  const nonBasicItems = items.value.filter(i => {
-    if (i.show_in_table) return false
-    if (isK8SGroup(i.group_name)) return false
-    if (isProcessGroup(i.group_name)) return false
-    if (isDiskIORule(i.rule_name)) return false
-    if (isNetworkIORule(i.rule_name)) return false
-    return true
-  })
-  
-  const groups: Record<number, { group_id: number; group_name: string; rules: any[] }> = {}
-  
-  nonBasicItems.forEach(item => {
-    if (!groups[item.group_id]) {
-      groups[item.group_id] = {
-        group_id: item.group_id,
-        group_name: item.group_name,
-        rules: []
-      }
-    }
-    
-    let ruleGroup = groups[item.group_id].rules.find(r => r.rule_name === item.rule_name)
-    if (!ruleGroup) {
-      const labels = parseLabels(item.labels)
-      let columns = [{ prop: 'instance', label: '实例', width: 150 }]
-      Object.keys(labels).forEach(key => {
-        if (key !== 'instance' && key !== '__name__') {
-          columns.push({ prop: key, label: key, width: 120 })
-        }
-      })
-      columns.push({ prop: 'value', label: '值', width: 100 })
-      
-      ruleGroup = {
-        rule_name: item.rule_name,
-        columns,
-        items: []
-      }
-      groups[item.group_id].rules.push(ruleGroup)
-    }
-    
-    const labels = parseLabels(item.labels)
-    const row: any = {
-      instance: stripPort(item.instance),
-      value: item.value.toFixed(2),
-      unit: item.unit,
-      status: item.status,
-      ...labels
-    }
-    
-    ruleGroup.items.push(row)
-  })
-  
-  return Object.values(groups)
-})
 
 // ==================== 数据加载与图表渲染 ====================
 
@@ -1533,6 +1220,16 @@ onMounted(() => loadReport())
 .rule-section { margin-bottom: 20px; }
 .rule-title { font-weight: bold; margin-bottom: 10px; color: #606266; }
 .table-note { margin-top: 10px; font-size: 12px; color: #909399; }
+
+/* 分组标题 */
+.group-section-header {
+  font-size: 16px;
+  font-weight: bold;
+  color: #303133;
+  margin: 20px 0 15px 0;
+  padding-left: 10px;
+  border-left: 4px solid #409EFF;
+}
 
 /* 双列卡片布局 */
 .dual-column-cards {
