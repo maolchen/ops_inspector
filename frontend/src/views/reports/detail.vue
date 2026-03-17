@@ -461,6 +461,7 @@ interface TableColumn {
   merge: boolean         // 是否参与合并
   unit: string           // 单位
   isDiskRelated: boolean // 是否与磁盘相关（影响按挂载点查询）
+  ruleType: boolean      // 规则类型：true=告警（显示背景色），false=展示（不显示背景色）
 }
 
 // 判断是否为基础资源分组
@@ -514,7 +515,8 @@ const tableColumns = computed(() => {
         type: 'value',
         merge: item.table_column_merge,
         unit: item.unit,
-        isDiskRelated
+        isDiskRelated,
+        ruleType: item.table_column_rule_type  // 告警规则显示背景色，展示规则不显示
       })
     }
   })
@@ -529,7 +531,8 @@ const tableColumns = computed(() => {
       type: 'mountpoint',
       merge: false, // 挂载点不参与合并
       unit: '',
-      isDiskRelated: true
+      isDiskRelated: true,
+      ruleType: false  // 挂载点不显示背景色
     })
   }
   
@@ -736,6 +739,15 @@ const basicResourceSpanMethod = ({ row, column, rowIndex, columnIndex }: { row: 
 const getBasicTableCellClass = ({ row, column }: { row: any; column: any }) => {
   const propName = column.property
   if (!propName) return ''
+  
+  // 查找对应的列配置
+  const colConfig = tableColumns.value.find(col => col.prop === propName)
+  
+  // 如果是展示类型（ruleType=false），不显示背景色
+  if (colConfig && !colConfig.ruleType) {
+    return ''
+  }
+  
   // 状态 key 格式：prop_status（与 createBasicRow 中设置的一致）
   const statusKey = propName + '_status'
   const status = row[statusKey]

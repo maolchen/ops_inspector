@@ -19,7 +19,7 @@ type Rule struct {
 	ID            uint      `gorm:"primaryKey" json:"id"`
 	GroupID       uint      `gorm:"index;not null" json:"group_id"`
 	Name          string    `gorm:"size:100;not null" json:"name"`
-	Type          bool      `gorm:"default:true" json:"type"` // true=告警规则, false=仅展示
+	Type          bool      `json:"type"` // true=告警规则, false=仅展示
 	ShowInTable   bool      `gorm:"default:false" json:"show_in_table"`
 	Description   string    `gorm:"size:500" json:"description"`
 	Query         string    `gorm:"type:text;not null" json:"query"`          // 即时查询 PromQL

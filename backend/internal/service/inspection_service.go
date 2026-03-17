@@ -106,6 +106,7 @@ func (s *InspectionService) executeInspection(rules []model.Rule, project *model
 				TableColumnType:  rule.TableColumnType,
 				TableColumnLabel: rule.TableColumnLabel,
 				TableColumnMerge: rule.TableColumnMerge,
+				TableColumnRuleType: rule.Type,
 			}
 
 			// 获取趋势数据

@@ -36,6 +36,7 @@ export interface InspectionItem {
   table_column_type: string
   table_column_label: string
   table_column_merge: boolean
+  table_column_rule_type: boolean  // 规则类型：true=告警，false=展示
   created_at: string
 }
 

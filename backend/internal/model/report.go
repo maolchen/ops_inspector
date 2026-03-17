@@ -50,6 +50,7 @@ type InspectionItem struct {
 	TableColumnType  string `json:"table_column_type"`
 	TableColumnLabel string `json:"table_column_label"`
 	TableColumnMerge bool   `json:"table_column_merge"`
+	TableColumnRuleType bool `json:"table_column_rule_type"` // 规则类型：true=告警，false=展示
 
 	CreatedAt time.Time `json:"created_at"`
 }

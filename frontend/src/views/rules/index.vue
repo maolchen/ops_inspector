@@ -48,7 +48,7 @@
               <span v-else style="color: #999">-</span>
             </template>
           </el-table-column>
-          <el-table-column prop="enabled" label="状态" width="80">
+          <el-table-column prop="enabled" label="启用" width="80">
             <template #default="{ row }">
               <el-switch
                 v-model="row.enabled"
