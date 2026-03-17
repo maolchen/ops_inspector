@@ -342,6 +342,13 @@ const isBasicResourceGroup = (groupName: string): boolean => {
          lower.includes('基础')
 }
 
+// 判断是否为进程分组
+const isProcessGroup = (groupName: string): boolean => {
+  const lower = groupName.toLowerCase()
+  return lower.includes('进程') || 
+         lower.includes('process')
+}
+
 // 判断规则名是否与磁盘相关
 const isDiskRelatedRule = (ruleName: string): boolean => {
   const lower = ruleName.toLowerCase()
@@ -570,11 +577,12 @@ const formatValue = (value: number, unit: string): string => {
   
   // 整数
   if (Number.isInteger(value)) {
-    return value.toString()
+    return value.toString() + (unit ? ` ${unit}` : '')
   }
   
-  // 默认保留两位小数
-  return value.toFixed(2)
+  // 默认保留两位小数，并添加单位
+  const formatted = value.toFixed(2)
+  return unit ? `${formatted} ${unit}` : formatted
 }
 
 // 基础资源表格单元格合并方法（动态版本）
@@ -717,7 +725,10 @@ const dynamicTablesConfig = computed(() => {
       { prop: '_status', label: '状态', isLabel: false, width: 80 }
     )
     
-    // 构建表格数据
+    // 获取第一个标签列的属性名，用于排序
+    const firstLabelProp = Object.keys(columnLabels)[0] || ''
+    
+    // 构建表格数据并按第一个标签列排序
     const data = ruleItems.map(item => {
       const itemLabels = parseLabels(item.labels || '{}')
       return {
@@ -727,6 +738,11 @@ const dynamicTablesConfig = computed(() => {
         _raw: item,  // 保留原始数据
         _valueFormatted: formatValue(item.value, item.unit)
       }
+    }).sort((a, b) => {
+      // 按第一个标签列排序
+      const aVal = a[firstLabelProp] || ''
+      const bVal = b[firstLabelProp] || ''
+      return aVal.localeCompare(bVal, 'zh-CN')
     })
     
     tables.push({

@@ -230,7 +230,7 @@ func initDefaultRules() error {
 		{"k8s_cluster", "Kubeproxy证书状态", true, false, "kubeproxy证书有效期检查", "kubeproxy_cert_days_left", floatPtr(30), "at_least", "天", `{"instance":"节点"}`, 0, 100, true},
 		{"k8s_cluster", "Kubecontroller证书状态", true, false, "kubecontroller证书有效期检查", "kube_controller_cert_days_left", floatPtr(30), "at_least", "天", `{"instance":"节点"}`, 0, 100, true},
 		{"k8s_cluster", "Pod运行状态", true, false, "集群Pod运行状态统计", `sum by (namespace, pod) (kube_pod_status_phase{phase="Running"} == 1 and on(namespace, pod) kube_pod_owner{owner_kind=~"Deployment|ReplicaSet|StatefulSet|DaemonSet"})`, floatPtr(1), "equal", "", `{"namespace":"命名空间","pod":"Pod名称"}`, 0, 100, true},
-		{"k8s_cluster", "PVC使用率", true, false, "持久化存储使用率", `100 * (1 - kubelet_volume_stats_available_bytes / kubelet_volume_stats_capacity_bytes)`, floatPtr(90), "greater", "%", `{"namespace":"命名空间","persistentvolumeclaim":"PVC名称"}`, 0, 100, true},
+		{"k8s_cluster", "PVC使用率", true, false, "持久化存储使用率", `100 * (1 - kubelet_volume_stats_available_bytes / kubelet_volume_stats_capacity_bytes) by (namespace, persistentvolumeclaim)`, floatPtr(90), "greater", "%", `{"namespace":"命名空间","persistentvolumeclaim":"PVC名称"}`, 0, 100, true},
 
 		// 进程指标
 		{"process_metrics", "进程CPU使用率top5", false, false, "进程CPU使用率top5", "topk by (instance) (5, rate(namedprocess_namegroup_cpu_seconds_total[5m]))", nil, "", "%", `{"instance":"节点","groupname":"进程名"}`, 0, 100, true},
