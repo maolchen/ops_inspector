@@ -37,7 +37,7 @@ type Rule struct {
 	TableColumnWidth int    `gorm:"default:100" json:"table_column_width"`                   // 列宽度（像素），0表示自动
 	TableColumnType  string `gorm:"size:20;default:'value'" json:"table_column_type"`        // 列类型：value=规则值, label=从labels提取
 	TableColumnLabel string `gorm:"size:50" json:"table_column_label"`                       // 当 table_column_type=label 时，指定要提取的label键名
-	TableColumnMerge bool   `gorm:"default:true" json:"table_column_merge"`                  // 是否参与单元格合并（同一IP多行时合并）
+	TableColumnMerge bool   `gorm:"default:false" json:"table_column_merge"`                 // 是否参与单元格合并（同一IP多行时合并）
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`

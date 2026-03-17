@@ -71,7 +71,7 @@
         </template>
         <el-table :data="basicResourceData" stripe border size="small" :span-method="basicResourceSpanMethod" :cell-class-name="getBasicTableCellClass">
           <!-- IP 列（固定首列） -->
-          <el-table-column prop="ip" label="IP地址" width="130" fixed="left" />
+          <el-table-column prop="ip" label="IP地址" min-width="130" fixed="left" />
           
           <!-- 动态列（循环生成） -->
           <el-table-column
@@ -79,8 +79,7 @@
             :key="col.prop"
             :prop="col.prop"
             :label="col.label"
-            :width="col.width > 0 ? col.width : undefined"
-            :min-width="col.width === 0 ? 100 : undefined"
+            :min-width="col.width > 0 ? col.width : 100"
           />
         </el-table>
       </el-card>
@@ -737,7 +736,8 @@ const basicResourceSpanMethod = ({ row, column, rowIndex, columnIndex }: { row: 
 const getBasicTableCellClass = ({ row, column }: { row: any; column: any }) => {
   const propName = column.property
   if (!propName) return ''
-  const statusKey = propName + 'Status'
+  // 状态 key 格式：prop_status（与 createBasicRow 中设置的一致）
+  const statusKey = propName + '_status'
   const status = row[statusKey]
   if (status === 'critical') return 'cell-critical'
   if (status === 'warning') return 'cell-warning'

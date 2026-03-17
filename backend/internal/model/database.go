@@ -188,49 +188,56 @@ func initDefaultRules() error {
 
 	// 定义默认规则
 	defaultRules := []struct {
-		GroupCode     string
-		Name          string
-		Type          bool
-		ShowInTable   bool
-		Description   string
-		Query         string
-		Threshold     *float64
-		ThresholdType string
-		Unit          string
-		Labels        string
+		GroupCode        string
+		Name             string
+		Type             bool
+		ShowInTable      bool
+		Description      string
+		Query            string
+		Threshold        *float64
+		ThresholdType    string
+		Unit             string
+		Labels           string
+		TableColumnOrder int
+		TableColumnWidth int
+		TableColumnMerge bool
 	}{
 		// 服务器基础资源
-		{"basic_resources", "CPU使用率", true, true, "节点CPU使用率统计", "100 - (avg by(instance) (irate(node_cpu_seconds_total{mode='idle'}[5m])) * 100)", floatPtr(80), "greater", "%", `{"instance":"节点"}`},
-		{"basic_resources", "CPU核心数", false, true, "节点CPU核心数统计", "count by (instance) (node_cpu_seconds_total{mode='idle'})", nil, "", "core", `{"instance":"节点"}`},
-		{"basic_resources", "内存总量", false, true, "节点内存总量统计", "node_memory_MemTotal_bytes", nil, "", "B", `{"instance":"节点"}`},
-		{"basic_resources", "内存使用量", false, true, "节点内存使用量统计", "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes", nil, "", "B", `{"instance":"节点"}`},
-		{"basic_resources", "内存使用率", true, true, "节点内存使用率统计", "100 - ((node_memory_MemAvailable_bytes * 100) / node_memory_MemTotal_bytes)", floatPtr(85), "greater", "%", `{"instance":"节点"}`},
-		{"basic_resources", "磁盘总量", false, true, "节点磁盘总量统计", `node_filesystem_size_bytes{fstype=~"ext.*|xfs",mountpoint !~".*pod.*|/run.*|/boot.*|/tmp.*"}`, nil, "", "B", `{"instance":"节点","mountpoint":"挂载点","device":"磁盘"}`},
-		{"basic_resources", "磁盘使用量", false, true, "节点磁盘使用量统计", `node_filesystem_size_bytes{fstype=~"ext.*|xfs",mountpoint !~".*pod.*|/run.*|/boot.*|/tmp.*"} - node_filesystem_avail_bytes{fstype=~"ext.*|xfs",mountpoint !~".*pod.*|/run.*|/boot.*|/tmp.*"}`, nil, "", "B", `{"instance":"节点","mountpoint":"挂载点","device":"磁盘"}`},
-		{"basic_resources", "磁盘使用率", true, true, "节点磁盘使用率统计", `(node_filesystem_size_bytes{fstype=~"ext.*|xfs",mountpoint !~".*pod.*|/run.*|/boot.*|/tmp.*"}-node_filesystem_free_bytes{fstype=~"ext.*|xfs",mountpoint !~".*pod.*|/run.*|/boot.*|/tmp.*"}) *100/(node_filesystem_avail_bytes{fstype=~"ext.*|xfs",mountpoint !~".*pod.*|/run.*|/boot.*|/tmp.*"}+(node_filesystem_size_bytes{fstype=~"ext.*|xfs",mountpoint !~".*pod.*|/run.*|/boot.*|/tmp.*"}-node_filesystem_free_bytes{fstype=~"ext.*|xfs",mountpoint !~".*pod.*|/run.*|/boot.*|/tmp.*"}))`, floatPtr(80), "greater", "%", `{"instance":"节点","mountpoint":"挂载点","device":"磁盘"}`},
-		{"basic_resources", "运行时间", false, true, "系统运行时长统计", "time() - node_boot_time_seconds", nil, "", "s", `{"instance":"节点"}`},
-		{"basic_resources", "5分钟负载", false, true, "系统5分钟平均负载", "node_load5", nil, "", "", `{"instance":"节点"}`},
-		{"basic_resources", "30分钟内磁盘平均读取值", true, false, "30分钟内磁盘平均读取速率", `avg_over_time(rate(node_disk_read_bytes_total{device=~"vd.*|sd.*"}[5m])[30m:1m]) / 1024 / 1024`, floatPtr(100), "greater", "MB/s", `{"instance":"节点","device":"设备"}`},
-		{"basic_resources", "30分钟内磁盘平均写入值", true, false, "30分钟内磁盘平均写入速率", `avg_over_time(rate(node_disk_written_bytes_total{device=~"vd.*|sd.*"}[5m])[30m:1m]) / 1024 / 1024`, floatPtr(100), "greater", "MB/s", `{"instance":"节点","device":"设备"}`},
-		{"basic_resources", "TCP连接数", false, true, "当前活跃的TCP连接总数", "node_netstat_Tcp_CurrEstab", nil, "", "个", `{"instance":"节点"}`},
-		{"basic_resources", "TCP_TW数", false, true, "TCP TIME_WAIT状态连接数", "node_sockstat_TCP_tw", nil, "", "个", `{"instance":"节点"}`},
-		{"basic_resources", "30分钟内下载速率", true, false, "30分钟内网络平均下载速率", `avg_over_time(rate(node_network_receive_bytes_total{device=~"eth.*|ens.*"}[5m])[30m:1m]) / 1024 / 1024`, floatPtr(100), "greater", "MB/s", `{"instance":"节点","device":"设备"}`},
-		{"basic_resources", "30分钟内上传速率", true, false, "30分钟内网络平均上传速率", `avg_over_time(rate(node_network_transmit_bytes_total{device=~"eth.*|ens.*"}[5m])[30m:1m]) / 1024 / 1024`, floatPtr(100), "greater", "MB/s", `{"instance":"节点","device":"设备"}`},
+		// 顺序：运行时间(10), CPU核心数(20), CPU使用率(30), 5分钟负载(40), 内存总量(50), 内存使用量(60), 内存使用率(70), TCP连接数(80), TCP_TW数(90)
+		// 挂载点自动插入(95), 磁盘总量(100), 磁盘使用量(110), 磁盘使用率(120)
+		{"basic_resources", "运行时间", false, true, "系统运行时长统计", "time() - node_boot_time_seconds", nil, "", "s", `{"instance":"节点"}`, 10, 120, true},
+		{"basic_resources", "CPU核心数", false, true, "节点CPU核心数统计", "count by (instance) (node_cpu_seconds_total{mode='idle'})", nil, "", "core", `{"instance":"节点"}`, 20, 80, true},
+		{"basic_resources", "CPU使用率", true, true, "节点CPU使用率统计", "100 - (avg by(instance) (irate(node_cpu_seconds_total{mode='idle'}[5m])) * 100)", floatPtr(80), "greater", "%", `{"instance":"节点"}`, 30, 100, true},
+		{"basic_resources", "5分钟负载", false, true, "系统5分钟平均负载", "node_load5", nil, "", "", `{"instance":"节点"}`, 40, 90, true},
+		{"basic_resources", "内存总量", false, true, "节点内存总量统计", "node_memory_MemTotal_bytes", nil, "", "B", `{"instance":"节点"}`, 50, 90, true},
+		{"basic_resources", "内存使用量", false, true, "节点内存使用量统计", "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes", nil, "", "B", `{"instance":"节点"}`, 60, 100, true},
+		{"basic_resources", "内存使用率", true, true, "节点内存使用率统计", "100 - ((node_memory_MemAvailable_bytes * 100) / node_memory_MemTotal_bytes)", floatPtr(85), "greater", "%", `{"instance":"节点"}`, 70, 100, true},
+		{"basic_resources", "TCP连接数", false, true, "当前活跃的TCP连接总数", "node_netstat_Tcp_CurrEstab", nil, "", "个", `{"instance":"节点"}`, 80, 90, true},
+		{"basic_resources", "TCP_TW数", false, true, "TCP TIME_WAIT状态连接数", "node_sockstat_TCP_tw", nil, "", "个", `{"instance":"节点"}`, 90, 90, true},
+		// 磁盘相关（挂载点列会自动插入在 order=95）
+		{"basic_resources", "磁盘总量", false, true, "节点磁盘总量统计", `node_filesystem_size_bytes{fstype=~"ext.*|xfs",mountpoint !~".*pod.*|/run.*|/boot.*|/tmp.*"}`, nil, "", "B", `{"instance":"节点","mountpoint":"挂载点","device":"磁盘"}`, 100, 90, false},
+		{"basic_resources", "磁盘使用量", false, true, "节点磁盘使用量统计", `node_filesystem_size_bytes{fstype=~"ext.*|xfs",mountpoint !~".*pod.*|/run.*|/boot.*|/tmp.*"} - node_filesystem_avail_bytes{fstype=~"ext.*|xfs",mountpoint !~".*pod.*|/run.*|/boot.*|/tmp.*"}`, nil, "", "B", `{"instance":"节点","mountpoint":"挂载点","device":"磁盘"}`, 110, 100, false},
+		{"basic_resources", "磁盘使用率", true, true, "节点磁盘使用率统计", `(node_filesystem_size_bytes{fstype=~"ext.*|xfs",mountpoint !~".*pod.*|/run.*|/boot.*|/tmp.*"}-node_filesystem_free_bytes{fstype=~"ext.*|xfs",mountpoint !~".*pod.*|/run.*|/boot.*|/tmp.*"}) *100/(node_filesystem_avail_bytes{fstype=~"ext.*|xfs",mountpoint !~".*pod.*|/run.*|/boot.*|/tmp.*"}+(node_filesystem_size_bytes{fstype=~"ext.*|xfs",mountpoint !~".*pod.*|/run.*|/boot.*|/tmp.*"}-node_filesystem_free_bytes{fstype=~"ext.*|xfs",mountpoint !~".*pod.*|/run.*|/boot.*|/tmp.*"}))`, floatPtr(80), "greater", "%", `{"instance":"节点","mountpoint":"挂载点","device":"磁盘"}`, 120, 100, false},
+		// 非表格展示的规则
+		{"basic_resources", "30分钟内磁盘平均读取值", true, false, "30分钟内磁盘平均读取速率", `avg_over_time(rate(node_disk_read_bytes_total{device=~"vd.*|sd.*"}[5m])[30m:1m]) / 1024 / 1024`, floatPtr(100), "greater", "MB/s", `{"instance":"节点","device":"设备"}`, 0, 100, true},
+		{"basic_resources", "30分钟内磁盘平均写入值", true, false, "30分钟内磁盘平均写入速率", `avg_over_time(rate(node_disk_written_bytes_total{device=~"vd.*|sd.*"}[5m])[30m:1m]) / 1024 / 1024`, floatPtr(100), "greater", "MB/s", `{"instance":"节点","device":"设备"}`, 0, 100, true},
+		{"basic_resources", "30分钟内下载速率", true, false, "30分钟内网络平均下载速率", `avg_over_time(rate(node_network_receive_bytes_total{device=~"eth.*|ens.*"}[5m])[30m:1m]) / 1024 / 1024`, floatPtr(100), "greater", "MB/s", `{"instance":"节点","device":"设备"}`, 0, 100, true},
+		{"basic_resources", "30分钟内上传速率", true, false, "30分钟内网络平均上传速率", `avg_over_time(rate(node_network_transmit_bytes_total{device=~"eth.*|ens.*"}[5m])[30m:1m]) / 1024 / 1024`, floatPtr(100), "greater", "MB/s", `{"instance":"节点","device":"设备"}`, 0, 100, true},
 
 		// Kubernetes集群状态
-		{"k8s_cluster", "节点就绪状态", true, false, "K8s节点就绪状态检查", `kube_node_status_condition{condition='Ready',status!='true'}`, floatPtr(0), "equal", "", `{"node":"节点","condition":"状态类型"}`},
-		{"k8s_cluster", "Kubelet证书状态", true, false, "kubelet证书有效期检查", "kubelet_cert_days_left", floatPtr(30), "at_least", "天", `{"instance":"节点"}`},
-		{"k8s_cluster", "Kubeproxy证书状态", true, false, "kubeproxy证书有效期检查", "kubeproxy_cert_days_left", floatPtr(30), "at_least", "天", `{"instance":"节点"}`},
-		{"k8s_cluster", "Kubecontroller证书状态", true, false, "kubecontroller证书有效期检查", "kube_controller_cert_days_left", floatPtr(30), "at_least", "天", `{"instance":"节点"}`},
-		{"k8s_cluster", "Pod运行状态", true, false, "集群Pod运行状态统计", `sum by (namespace, pod) (kube_pod_status_phase{phase="Running"} == 1 and on(namespace, pod) kube_pod_owner{owner_kind=~"Deployment|ReplicaSet|StatefulSet|DaemonSet"})`, floatPtr(1), "equal", "", `{"namespace":"命名空间","pod":"Pod名称"}`},
-		{"k8s_cluster", "PVC使用率", true, false, "持久化存储使用率", `100 * (1 - kubelet_volume_stats_available_bytes / kubelet_volume_stats_capacity_bytes)`, floatPtr(90), "greater", "%", `{"namespace":"命名空间","persistentvolumeclaim":"PVC名称"}`},
+		{"k8s_cluster", "节点就绪状态", true, false, "K8s节点就绪状态检查", `kube_node_status_condition{condition='Ready',status!='true'}`, floatPtr(0), "equal", "", `{"node":"节点","condition":"状态类型"}`, 0, 100, true},
+		{"k8s_cluster", "Kubelet证书状态", true, false, "kubelet证书有效期检查", "kubelet_cert_days_left", floatPtr(30), "at_least", "天", `{"instance":"节点"}`, 0, 100, true},
+		{"k8s_cluster", "Kubeproxy证书状态", true, false, "kubeproxy证书有效期检查", "kubeproxy_cert_days_left", floatPtr(30), "at_least", "天", `{"instance":"节点"}`, 0, 100, true},
+		{"k8s_cluster", "Kubecontroller证书状态", true, false, "kubecontroller证书有效期检查", "kube_controller_cert_days_left", floatPtr(30), "at_least", "天", `{"instance":"节点"}`, 0, 100, true},
+		{"k8s_cluster", "Pod运行状态", true, false, "集群Pod运行状态统计", `sum by (namespace, pod) (kube_pod_status_phase{phase="Running"} == 1 and on(namespace, pod) kube_pod_owner{owner_kind=~"Deployment|ReplicaSet|StatefulSet|DaemonSet"})`, floatPtr(1), "equal", "", `{"namespace":"命名空间","pod":"Pod名称"}`, 0, 100, true},
+		{"k8s_cluster", "PVC使用率", true, false, "持久化存储使用率", `100 * (1 - kubelet_volume_stats_available_bytes / kubelet_volume_stats_capacity_bytes)`, floatPtr(90), "greater", "%", `{"namespace":"命名空间","persistentvolumeclaim":"PVC名称"}`, 0, 100, true},
 
 		// 进程指标
-		{"process_metrics", "进程CPU使用率top5", false, false, "进程CPU使用率top5", "topk by (instance) (5, rate(namedprocess_namegroup_cpu_seconds_total[5m]))", nil, "", "%", `{"instance":"节点","groupname":"进程名"}`},
-		{"process_metrics", "进程内存使用率top5", false, false, "进程内存使用率top5", `topk by (instance) (5,(avg_over_time(namedprocess_namegroup_memory_bytes{memtype="swapped"}[5m])+ ignoring (memtype) avg_over_time(namedprocess_namegroup_memory_bytes{memtype="resident"}[5m])) / (1024 * 1204))`, nil, "", "MB", `{"instance":"节点","groupname":"进程名"}`},
+		{"process_metrics", "进程CPU使用率top5", false, false, "进程CPU使用率top5", "topk by (instance) (5, rate(namedprocess_namegroup_cpu_seconds_total[5m]))", nil, "", "%", `{"instance":"节点","groupname":"进程名"}`, 0, 100, true},
+		{"process_metrics", "进程内存使用率top5", false, false, "进程内存使用率top5", `topk by (instance) (5,(avg_over_time(namedprocess_namegroup_memory_bytes{memtype="swapped"}[5m])+ ignoring (memtype) avg_over_time(namedprocess_namegroup_memory_bytes{memtype="resident"}[5m])) / (1024 * 1204))`, nil, "", "MB", `{"instance":"节点","groupname":"进程名"}`, 0, 100, true},
 
 		// 其他指标
-		{"other_metrics", "域名证书有效期小于30天", true, false, "域名证书有效期检查", "round((probe_ssl_earliest_cert_expiry - time()) / 86400)", floatPtr(60), "at_least", "天", `{"instance":"节点","target":"域名"}`},
+		{"other_metrics", "域名证书有效期小于30天", true, false, "域名证书有效期检查", "round((probe_ssl_earliest_cert_expiry - time()) / 86400)", floatPtr(60), "at_least", "天", `{"instance":"节点","target":"域名"}`, 0, 100, true},
 	}
 
 	// 创建规则
@@ -256,19 +263,22 @@ func initDefaultRules() error {
 			continue
 		}
 		rules = append(rules, Rule{
-			GroupID:       groupID,
-			Name:          r.Name,
-			Type:          r.Type,
-			ShowInTable:   r.ShowInTable,
-			Description:   r.Description,
-			Query:         r.Query,
-			Threshold:     r.Threshold,
-			ThresholdType: r.ThresholdType,
-			Unit:          r.Unit,
-			Labels:        r.Labels,
-			ProjectScope:  "*",
-			Enabled:       true,
-			SortOrder:     sortOrder,
+			GroupID:          groupID,
+			Name:             r.Name,
+			Type:             r.Type,
+			ShowInTable:      r.ShowInTable,
+			Description:      r.Description,
+			Query:            r.Query,
+			Threshold:        r.Threshold,
+			ThresholdType:    r.ThresholdType,
+			Unit:             r.Unit,
+			Labels:           r.Labels,
+			ProjectScope:     "*",
+			Enabled:          true,
+			SortOrder:        sortOrder,
+			TableColumnOrder: r.TableColumnOrder,
+			TableColumnWidth: r.TableColumnWidth,
+			TableColumnMerge: r.TableColumnMerge,
 		})
 		sortOrder++
 	}
