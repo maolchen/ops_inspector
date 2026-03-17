@@ -30,8 +30,8 @@ RUN pnpm build
 # ============================================
 FROM golang:1.21-alpine AS backend-builder
 
-# 安装构建依赖（SQLite 需要 CGO，需要 gcc）
-RUN apk add --no-cache git ca-certificates tzdata gcc musl-dev
+# 安装构建依赖
+RUN apk add --no-cache git ca-certificates tzdata
 
 WORKDIR /app/backend
 
@@ -44,8 +44,8 @@ RUN go mod download
 # 复制后端源码
 COPY backend/ ./
 
-# 构建后端（CGO_ENABLED=1 用于 SQLite）
-RUN CGO_ENABLED=1 GOOS=linux go build -ldflags="-s -w" -o /app/server ./cmd/main.go
+# 构建后端（纯 Go，无需 CGO）
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /app/server ./cmd/main.go
 
 # ============================================
 # 阶段3: 运行环境
@@ -56,7 +56,7 @@ LABEL maintainer="Ops Inspection Platform"
 LABEL description="轻量级运维巡检平台"
 
 # 安装运行时依赖
-RUN apk add --no-cache ca-certificates tzdata libc6-compat
+RUN apk add --no-cache ca-certificates tzdata
 
 # 设置时区
 ENV TZ=Asia/Shanghai
