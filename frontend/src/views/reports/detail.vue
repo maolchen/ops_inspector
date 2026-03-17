@@ -1125,6 +1125,18 @@ const renderTrendCharts = (
       yAxis: { type: 'value', max: 100, axisLabel: { formatter: '{value}%' } },
       series
     })
+    
+    // 图例单选：点击某个图例仅展示该线条
+    const allSeriesNames = series.map(s => s.name)
+    chart.on('legendselectchanged', (params: any) => {
+      const selectedName = params.name
+      // 构建新的选中状态：只有被点击的为 true
+      const newSelected: Record<string, boolean> = {}
+      allSeriesNames.forEach(name => {
+        newSelected[name] = name === selectedName
+      })
+      chart.setOption({ legend: { selected: newSelected } })
+    })
   }
   
   // 内存趋势图
@@ -1181,6 +1193,17 @@ const renderTrendCharts = (
       yAxis: { type: 'value', max: 100, axisLabel: { formatter: '{value}%' } },
       series
     })
+    
+    // 图例单选：点击某个图例仅展示该线条
+    const allSeriesNames = series.map(s => s.name)
+    chart.on('legendselectchanged', (params: any) => {
+      const selectedName = params.name
+      const newSelected: Record<string, boolean> = {}
+      allSeriesNames.forEach(name => {
+        newSelected[name] = name === selectedName
+      })
+      chart.setOption({ legend: { selected: newSelected } })
+    })
   }
   
   // 磁盘趋势图
@@ -1236,6 +1259,17 @@ const renderTrendCharts = (
       xAxis: { type: 'category', data: dates },
       yAxis: { type: 'value', max: 100, axisLabel: { formatter: '{value}%' } },
       series
+    })
+    
+    // 图例单选：点击某个图例仅展示该线条
+    const allSeriesNames = series.map(s => s.name)
+    chart.on('legendselectchanged', (params: any) => {
+      const selectedName = params.name
+      const newSelected: Record<string, boolean> = {}
+      allSeriesNames.forEach(name => {
+        newSelected[name] = name === selectedName
+      })
+      chart.setOption({ legend: { selected: newSelected } })
     })
   }
 }
