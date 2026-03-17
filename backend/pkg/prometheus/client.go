@@ -151,7 +151,7 @@ func (c *Client) QueryRange(address, token, query string) (string, error) {
 	q.Set("query", query)
 	q.Set("start", fmt.Sprintf("%d", time.Now().Add(-7*24*time.Hour).Unix()))
 	q.Set("end", fmt.Sprintf("%d", time.Now().Unix()))
-	q.Set("step", "1h")
+	q.Set("step", "5m")
 	u.RawQuery = q.Encode()
 
 	// 创建请求
