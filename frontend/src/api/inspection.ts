@@ -30,6 +30,12 @@ export interface InspectionItem {
   trend_data: string
   labels: string
   unit: string
+  // 表格列配置
+  table_column_order: number
+  table_column_width: number
+  table_column_type: string
+  table_column_label: string
+  table_column_merge: boolean
   created_at: string
 }
 

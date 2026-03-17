@@ -113,6 +113,43 @@
         <el-form-item label="表格展示">
           <el-switch v-model="ruleForm.show_in_table" />
         </el-form-item>
+        
+        <!-- 表格列配置（仅当表格展示开启时显示） -->
+        <template v-if="ruleForm.show_in_table">
+          <el-divider content-position="left">表格列配置</el-divider>
+          <el-form-item label="列数据来源">
+            <el-radio-group v-model="ruleForm.table_column_type">
+              <el-radio value="value">规则查询值</el-radio>
+              <el-radio value="label">从标签提取</el-radio>
+            </el-radio-group>
+            <div class="form-tip" style="color: #909399; font-size: 12px; margin-top: 4px;">
+              选择"从标签提取"时，该列显示 Prometheus 查询结果中的指定标签值
+            </div>
+          </el-form-item>
+          <el-form-item label="标签键名" v-if="ruleForm.table_column_type === 'label'">
+            <el-input v-model="ruleForm.table_column_label" placeholder="如: mountpoint, device, namespace" />
+            <div class="form-tip" style="color: #909399; font-size: 12px; margin-top: 4px;">
+              指定要从查询结果中提取的标签键名
+            </div>
+          </el-form-item>
+          <el-form-item label="列顺序">
+            <el-input-number v-model="ruleForm.table_column_order" :min="0" :max="999" />
+            <div class="form-tip" style="color: #909399; font-size: 12px; margin-top: 4px;">
+              数字越小越靠前，相同顺序按名称排序
+            </div>
+          </el-form-item>
+          <el-form-item label="列宽度">
+            <el-input-number v-model="ruleForm.table_column_width" :min="0" :max="500" />
+            <span style="margin-left: 8px; color: #909399; font-size: 12px;">像素，0 表示自适应</span>
+          </el-form-item>
+          <el-form-item label="合并单元格">
+            <el-switch v-model="ruleForm.table_column_merge" />
+            <div class="form-tip" style="color: #909399; font-size: 12px; margin-top: 4px;">
+              同一 IP 多行数据时是否合并显示（如磁盘挂载点列应关闭）
+            </div>
+          </el-form-item>
+        </template>
+        
         <el-form-item label="指标描述">
           <el-input v-model="ruleForm.description" type="textarea" />
         </el-form-item>
@@ -189,7 +226,13 @@ const ruleForm = ref<Partial<Rule>>({
   labels: '',
   threshold_type: 'greater',
   project_scope: '*',
-  enabled: true
+  enabled: true,
+  // 表格列配置
+  table_column_order: 0,
+  table_column_width: 100,
+  table_column_type: 'value',
+  table_column_label: '',
+  table_column_merge: true
 })
 
 const groupRules = {
@@ -269,7 +312,13 @@ const handleAddRule = () => {
     labels: '',
     threshold_type: 'greater',
     project_scope: '*',
-    enabled: true
+    enabled: true,
+    // 表格列配置
+    table_column_order: 0,
+    table_column_width: 100,
+    table_column_type: 'value',
+    table_column_label: '',
+    table_column_merge: true
   }
   ruleDialogVisible.value = true
 }

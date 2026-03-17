@@ -100,6 +100,12 @@ func (s *InspectionService) executeInspection(rules []model.Rule, project *model
 				ShowInTable: rule.ShowInTable,
 				Labels:      result.Labels,
 				Unit:        rule.Unit,
+				// 表格列配置（从规则冗余）
+				TableColumnOrder: rule.TableColumnOrder,
+				TableColumnWidth: rule.TableColumnWidth,
+				TableColumnType:  rule.TableColumnType,
+				TableColumnLabel: rule.TableColumnLabel,
+				TableColumnMerge: rule.TableColumnMerge,
 			}
 
 			// 获取趋势数据

@@ -31,8 +31,16 @@ type Rule struct {
 	ProjectScope  string    `gorm:"size:100;default:'*'" json:"project_scope"` // 适用项目，* 表示全部
 	Enabled       bool      `gorm:"default:true" json:"enabled"`
 	SortOrder     int       `gorm:"default:0" json:"sort_order"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+
+	// 表格列配置
+	TableColumnOrder int    `gorm:"default:0" json:"table_column_order"`                     // 列显示顺序，数字越小越靠前
+	TableColumnWidth int    `gorm:"default:100" json:"table_column_width"`                   // 列宽度（像素），0表示自动
+	TableColumnType  string `gorm:"size:20;default:'value'" json:"table_column_type"`        // 列类型：value=规则值, label=从labels提取
+	TableColumnLabel string `gorm:"size:50" json:"table_column_label"`                       // 当 table_column_type=label 时，指定要提取的label键名
+	TableColumnMerge bool   `gorm:"default:true" json:"table_column_merge"`                  // 是否参与单元格合并（同一IP多行时合并）
+
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 
 	// 关联
 	Group *RuleGroup `gorm:"foreignKey:GroupID" json:"group,omitempty"`

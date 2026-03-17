@@ -26,6 +26,12 @@ export interface Rule {
   project_scope: string
   enabled: boolean
   sort_order: number
+  // 表格列配置
+  table_column_order: number
+  table_column_width: number
+  table_column_type: string
+  table_column_label: string
+  table_column_merge: boolean
   created_at: string
   updated_at: string
   group?: RuleGroup

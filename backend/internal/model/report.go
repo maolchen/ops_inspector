@@ -43,7 +43,15 @@ type InspectionItem struct {
 	TrendData   string    `gorm:"type:text" json:"trend_data"` // JSON 格式的趋势数据
 	Labels      string    `gorm:"type:text" json:"labels"`     // JSON 格式的标签数据
 	Unit        string    `gorm:"size:20" json:"unit"`
-	CreatedAt   time.Time `json:"created_at"`
+
+	// 表格列配置（从规则冗余）
+	TableColumnOrder int    `json:"table_column_order"`
+	TableColumnWidth int    `json:"table_column_width"`
+	TableColumnType  string `json:"table_column_type"`
+	TableColumnLabel string `json:"table_column_label"`
+	TableColumnMerge bool   `json:"table_column_merge"`
+
+	CreatedAt time.Time `json:"created_at"`
 }
 
 func (InspectionItem) TableName() string {

@@ -70,20 +70,18 @@
           <span class="section-title">基础资源详情</span>
         </template>
         <el-table :data="basicResourceData" stripe border size="small" :span-method="basicResourceSpanMethod" :cell-class-name="getBasicTableCellClass">
+          <!-- IP 列（固定首列） -->
           <el-table-column prop="ip" label="IP地址" width="130" fixed="left" />
-          <el-table-column prop="cpuCores" label="CPU核心数" width="100" />
-          <el-table-column prop="cpuUsage" label="CPU使用率" width="110" />
-          <el-table-column prop="uptime" label="运行时间" width="130" />
-          <el-table-column prop="load5" label="5分钟负载" width="100" />
-          <el-table-column prop="memTotal" label="内存总量" width="100" />
-          <el-table-column prop="memUsed" label="内存使用量" width="110" />
-          <el-table-column prop="memUsage" label="内存使用率" width="110" />
-          <el-table-column prop="mountpoint" label="挂载点" width="100" />
-          <el-table-column prop="diskTotal" label="磁盘总量" width="100" />
-          <el-table-column prop="diskUsed" label="磁盘使用量" width="110" />
-          <el-table-column prop="diskUsage" label="磁盘使用率" width="110" />
-          <el-table-column prop="tcpConn" label="TCP连接数" width="100" />
-          <el-table-column prop="tcpTw" label="TCP_TW数" width="100" />
+          
+          <!-- 动态列（循环生成） -->
+          <el-table-column
+            v-for="col in tableColumns"
+            :key="col.prop"
+            :prop="col.prop"
+            :label="col.label"
+            :width="col.width > 0 ? col.width : undefined"
+            :min-width="col.width === 0 ? 100 : undefined"
+          />
         </el-table>
       </el-card>
 
@@ -454,6 +452,17 @@ const groupStats = computed(() => {
 
 // ==================== 基础资源详情表格 ====================
 
+// 动态表格列接口
+interface TableColumn {
+  prop: string           // 列属性名
+  label: string          // 列标题
+  width: number          // 列宽度
+  order: number          // 列顺序
+  type: 'value' | 'label' // 列类型
+  merge: boolean         // 是否参与合并
+  unit: string           // 单位
+}
+
 // 判断是否为基础资源分组
 const isBasicResourceGroup = (groupName: string): boolean => {
   const lower = groupName.toLowerCase()
@@ -465,6 +474,38 @@ const isBasicResourceGroup = (groupName: string): boolean => {
          lower.includes('memory') ||
          lower.includes('基础')
 }
+
+// 动态表格列配置
+const tableColumns = computed(() => {
+  // 只取基础资源分组且 show_in_table 的数据
+  const basicItems = items.value.filter(i => isBasicResourceGroup(i.group_name) && i.show_in_table)
+  
+  // 收集所有唯一的列配置
+  const columnMap = new Map<string, TableColumn>()
+  
+  basicItems.forEach(item => {
+    const key = item.table_column_type === 'label' 
+      ? `label_${item.table_column_label}` 
+      : `value_${item.rule_name}`
+    
+    if (!columnMap.has(key)) {
+      columnMap.set(key, {
+        prop: key,
+        label: item.table_column_type === 'label' 
+          ? item.table_column_label 
+          : item.rule_name,
+        width: item.table_column_width || 100,
+        order: item.table_column_order || 0,
+        type: item.table_column_type as 'value' | 'label',
+        merge: item.table_column_merge,
+        unit: item.unit
+      })
+    }
+  })
+  
+  // 按顺序排序
+  return Array.from(columnMap.values()).sort((a, b) => a.order - b.order)
+})
 
 // 基础资源详情表格数据 - 支持单元格合并
 // 非磁盘数据合并为一行，磁盘数据按挂载点分行
@@ -551,81 +592,101 @@ const basicResourceData = computed(() => {
   return result
 })
 
-// 创建基础资源行数据
+// 创建基础资源行数据（动态版本）
 const createBasicRow = (ip: string, data: Record<string, any>, mountpoint: string, isFirst: boolean = true) => {
-  const getData = (keys: string[]): { value: number; status: string } | undefined => {
-    for (const key of keys) {
-      // 先尝试带挂载点的key
-      const mpKey = `${key}_${mountpoint}`
-      if (data[mpKey]) return data[mpKey]
-      if (data[key]) return data[key]
-    }
-    return undefined
-  }
-  
-  // CPU相关
-  const cpuCores = getData(['CPU核心数', 'cpu_cores', 'CPU核心', 'cpu核心'])
-  const cpuUsage = getData(['CPU使用率', 'cpu使用率', 'CPU Usage'])
-  const uptime = getData(['运行时间', 'uptime', '系统运行时间'])
-  const load5 = getData(['5分钟负载', '负载5', 'load5', '系统负载'])
-  
-  // 内存相关
-  const memTotal = getData(['内存总量', 'memory_total', 'Memory Total', '节点内存'])
-  const memUsed = getData(['内存使用量', 'memory_used', 'Memory Used'])
-  const memUsage = getData(['内存使用率', 'memory_usage', 'Memory Usage'])
-  
-  // 磁盘相关
-  const diskTotal = getData(['磁盘总量', 'disk_total', 'Disk Total'])
-  const diskUsed = getData(['磁盘使用量', 'disk_used', 'Disk Used'])
-  const diskUsage = getData(['磁盘使用率', 'disk_usage', 'Disk Usage'])
-  
-  // 网络相关
-  const tcpConn = getData(['TCP连接数', 'tcp_conn', 'TCP Connections'])
-  const tcpTw = getData(['TCP_TW数', 'tcp_tw', 'TCP TimeWait'])
-  
-  return {
+  const row: Record<string, any> = {
     _ip: ip,
     _isFirst: isFirst,
-    ip: isFirst ? ip : '',
-    mountpoint: mountpoint || '-',
-    cpuCores: isFirst ? (cpuCores ? Math.round(cpuCores.value) : '-') : '',
-    cpuUsage: isFirst ? (cpuUsage ? cpuUsage.value.toFixed(2) + '%' : '-') : '',
-    cpuUsageStatus: isFirst ? (cpuUsage?.status || '') : '',
-    uptime: isFirst ? (uptime ? formatUptime(uptime.value) : '-') : '',
-    load5: isFirst ? (load5 ? load5.value.toFixed(2) : '-') : '',
-    load5Status: isFirst ? (load5?.status || '') : '',
-    memTotal: isFirst ? (memTotal ? formatBytesToHuman(memTotal.value) : '-') : '',
-    memUsed: isFirst ? (memUsed ? formatBytesToHuman(memUsed.value) : '-') : '',
-    memUsage: isFirst ? (memUsage ? memUsage.value.toFixed(2) + '%' : '-') : '',
-    memUsageStatus: isFirst ? (memUsage?.status || '') : '',
-    diskTotal: diskTotal ? formatBytesToHuman(diskTotal.value) : '-',
-    diskUsed: diskUsed ? formatBytesToHuman(diskUsed.value) : '-',
-    diskUsage: diskUsage ? diskUsage.value.toFixed(2) + '%' : '-',
-    diskUsageStatus: diskUsage?.status || '',
-    tcpConn: isFirst ? (tcpConn ? Math.round(tcpConn.value) : '-') : '',
-    tcpTw: isFirst ? (tcpTw ? Math.round(tcpTw.value) : '-') : ''
+    ip: isFirst ? ip : ''
   }
-}
-
-// 基础资源表格单元格合并方法
-// 非磁盘列（IP到内存使用率、TCP连接数、TCP_TW数）需要合并
-// 磁盘列（挂载点、磁盘总量、磁盘使用量、磁盘使用率）不合并
-const basicResourceSpanMethod = ({ row, column, rowIndex, columnIndex }: { row: any; column: any; rowIndex: number; columnIndex: number }) => {
-  // 需要合并的列索引：0-7（IP到内存使用率），12-13（TCP连接数、TCP_TW数）
-  // 不需要合并的列索引：8-11（挂载点、磁盘总量、磁盘使用量、磁盘使用率）
-  const mergeColumns = [0, 1, 2, 3, 4, 5, 6, 7, 12, 13]
   
-  if (mergeColumns.includes(columnIndex)) {
-    if (row._rowSpan > 0) {
-      return {
-        rowspan: row._rowSpan,
-        colspan: 1
+  // 根据列配置动态填充数据
+  tableColumns.value.forEach(col => {
+    if (col.type === 'label') {
+      // 从 labels 提取
+      if (col.label === 'mountpoint' || col.label === 'device') {
+        // 挂载点/设备列：直接使用传入的 mountpoint 参数
+        row[col.prop] = mountpoint || '-'
+      } else {
+        // 其他 label 列：从数据中提取
+        const firstItem = Object.values(data)[0] as any
+        const labels = firstItem?.labels || {}
+        row[col.prop] = labels[col.label] || '-'
       }
     } else {
-      return {
-        rowspan: 0,
-        colspan: 0
+      // 规则值列
+      const ruleName = col.label // col.label 实际是规则名
+      // 先尝试带挂载点的 key
+      const mpKey = `${ruleName}_${mountpoint}`
+      const item = data[mpKey] || data[ruleName]
+      
+      if (item && item.value !== undefined) {
+        row[col.prop] = formatValue(item.value, col.unit)
+        row[`${col.prop}_status`] = item.status
+      } else {
+        row[col.prop] = '-'
+        row[`${col.prop}_status`] = ''
       }
+      
+      // 非首行的合并列数据清空
+      if (!isFirst && col.merge) {
+        row[col.prop] = ''
+        row[`${col.prop}_status`] = ''
+      }
+    }
+  })
+  
+  return row
+}
+
+// 格式化数值
+const formatValue = (value: number, unit: string): string => {
+  if (value === undefined || value === null) return '-'
+  
+  // 字节单位
+  if (unit === 'bytes' || unit === 'B') {
+    return formatBytesToHuman(value)
+  }
+  
+  // 百分比
+  if (unit === '%') {
+    return value.toFixed(2) + '%'
+  }
+  
+  // 秒数（运行时间）
+  if (unit === 's' || unit === 'seconds') {
+    return formatUptime(value)
+  }
+  
+  // 整数
+  if (Number.isInteger(value)) {
+    return value.toString()
+  }
+  
+  // 默认保留两位小数
+  return value.toFixed(2)
+}
+
+// 基础资源表格单元格合并方法（动态版本）
+const basicResourceSpanMethod = ({ row, column, rowIndex, columnIndex }: { row: any; column: any; rowIndex: number; columnIndex: number }) => {
+  // 第一列（IP列）始终参与合并
+  if (columnIndex === 0) {
+    if (row._rowSpan > 0) {
+      return { rowspan: row._rowSpan, colspan: 1 }
+    } else {
+      return { rowspan: 0, colspan: 0 }
+    }
+  }
+  
+  // 动态列：根据列配置的 merge 属性决定是否合并
+  const prop = column.property
+  const col = tableColumns.value.find(c => c.prop === prop)
+  
+  if (col && col.merge) {
+    if (row._rowSpan > 0) {
+      return { rowspan: row._rowSpan, colspan: 1 }
+    } else {
+      return { rowspan: 0, colspan: 0 }
     }
   }
 }
