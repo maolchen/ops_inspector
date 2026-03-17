@@ -128,6 +128,12 @@ func (h *RuleHandler) Update(c *gin.Context) {
 	existing.ProjectScope = req.ProjectScope
 	existing.Enabled = req.Enabled
 	existing.SortOrder = req.SortOrder
+	// 表格列配置
+	existing.TableColumnOrder = req.TableColumnOrder
+	existing.TableColumnWidth = req.TableColumnWidth
+	existing.TableColumnType = req.TableColumnType
+	existing.TableColumnLabel = req.TableColumnLabel
+	existing.TableColumnMerge = req.TableColumnMerge
 
 	if err := h.service.Update(existing); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

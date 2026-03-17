@@ -174,10 +174,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { ruleGroupApi, ruleApi, type RuleGroup, type Rule } from '../../api/rule'
+
+// 判断是否为磁盘相关规则
+const isDiskRelatedRule = (name: string): boolean => {
+  const lower = name.toLowerCase()
+  return lower.includes('磁盘') || lower.includes('disk') || lower.includes('挂载') || lower.includes('mount')
+}
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -343,6 +349,23 @@ const handleSubmitRule = async () => {
     submitting.value = false
   }
 }
+
+// 监听规则名称变化，自动设置合并单元格默认值
+watch(() => ruleForm.value.name, (newName) => {
+  // 只在新增模式且开启表格展示时自动设置
+  if (!ruleEditMode.value && ruleForm.value.show_in_table && newName) {
+    // 磁盘相关规则默认不合并
+    ruleForm.value.table_column_merge = !isDiskRelatedRule(newName)
+  }
+})
+
+// 监听表格展示开关，自动设置合并单元格默认值
+watch(() => ruleForm.value.show_in_table, (showInTable) => {
+  // 只在新增模式时自动设置
+  if (!ruleEditMode.value && showInTable && ruleForm.value.name) {
+    ruleForm.value.table_column_merge = !isDiskRelatedRule(ruleForm.value.name)
+  }
+})
 
 onMounted(() => {
   loadData()
