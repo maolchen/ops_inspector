@@ -107,6 +107,7 @@ func (s *InspectionService) executeInspection(rules []model.Rule, project *model
 				TableColumnLabel: rule.TableColumnLabel,
 				TableColumnMerge: rule.TableColumnMerge,
 				TableColumnRuleType: rule.Type,
+				RuleLabels:       rule.Labels, // 规则的标签别名映射
 			}
 
 			// 获取趋势数据

@@ -51,6 +51,7 @@ type InspectionItem struct {
 	TableColumnLabel string `json:"table_column_label"`
 	TableColumnMerge bool   `json:"table_column_merge"`
 	TableColumnRuleType bool `json:"table_column_rule_type"` // 规则类型：true=告警，false=展示
+	RuleLabels       string `gorm:"type:text" json:"rule_labels"` // 规则定义的标签别名映射，用于动态表格列配置
 
 	CreatedAt time.Time `json:"created_at"`
 }

@@ -675,10 +675,36 @@ const dynamicTablesConfig = computed(() => {
     if (ruleItems.length === 0) return
     
     const firstItem = ruleItems[0]
-    const labels = parseLabels(firstItem.labels || '{}')
+    
+    // 优先使用 rule_labels（规则定义的标签别名映射），否则降级使用 labels 中的键名
+    let columnLabels: Record<string, string>
+    if (firstItem.rule_labels) {
+      // 使用规则定义的标签别名映射
+      columnLabels = parseLabels(firstItem.rule_labels)
+    } else {
+      // 降级：从 Prometheus 返回的 labels 中提取键名作为列名
+      const promLabels = parseLabels(firstItem.labels || '{}')
+      columnLabels = {}
+      Object.keys(promLabels).forEach(key => {
+        // 将键名转换为更友好的显示名称
+        const displayNameMap: Record<string, string> = {
+          'instance': '节点',
+          'node': '节点',
+          'device': '设备',
+          'namespace': '命名空间',
+          'pod': 'Pod名称',
+          'persistentvolumeclaim': 'PVC名称',
+          'mountpoint': '挂载点',
+          'condition': '状态类型',
+          'groupname': '进程名',
+          'target': '域名'
+        }
+        columnLabels[key] = displayNameMap[key] || key
+      })
+    }
     
     // 解析标签列为动态列
-    const columns: DynamicTableColumn[] = Object.entries(labels).map(([labelKey, labelAlias]) => ({
+    const columns: DynamicTableColumn[] = Object.entries(columnLabels).map(([labelKey, labelAlias]) => ({
       prop: labelKey,
       label: labelAlias as string,
       isLabel: true,
