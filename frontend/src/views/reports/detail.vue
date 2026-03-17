@@ -147,130 +147,135 @@
         <div class="table-note">说明：值>=90%表示异常，值<90%表示正常</div>
       </el-card>
 
-      <!-- K8S证书状态 - 按证书类型分组 -->
-      <template v-for="(certGroup, certType) in k8sCertGroupedData" :key="certType">
-        <el-card class="section-card" v-if="certGroup.length > 0">
+      <!-- K8S证书状态 - 按证书类型分组（双列布局） -->
+      <div class="dual-column-cards" v-if="Object.keys(k8sCertGroupedData).length > 0">
+        <template v-for="(certGroup, certType) in k8sCertGroupedData" :key="certType">
+          <el-card class="section-card half-width" v-if="certGroup.length > 0">
+            <template #header>
+              <span class="section-title">{{ certType }}</span>
+            </template>
+            <el-table :data="certGroup" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.value >= 30 ? 'cell-normal' : 'cell-warning') : ''">
+              <el-table-column prop="node" label="节点" min-width="150" />
+              <el-table-column prop="value" label="值" width="100">
+                <template #default="{ row }">
+                  {{ row.value }} 天
+                </template>
+              </el-table-column>
+              <el-table-column prop="status" label="状态" width="80">
+                <template #default="{ row }">
+                  {{ row.value >= 30 ? '正常' : '异常' }}
+                </template>
+              </el-table-column>
+            </el-table>
+            <div class="table-note">说明：值>=30天表示正常，值<30天表示异常</div>
+          </el-card>
+        </template>
+      </div>
+
+      <!-- 磁盘IO表格（双列布局） -->
+      <div class="dual-column-cards" v-if="diskWriteTableData.length > 0 || diskReadTableData.length > 0">
+        <el-card class="section-card half-width" v-if="diskWriteTableData.length > 0">
           <template #header>
-            <span class="section-title">{{ certType }}</span>
+            <span class="section-title">30分钟内磁盘平均写入值</span>
           </template>
-          <el-table :data="certGroup" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.value >= 30 ? 'cell-normal' : 'cell-warning') : ''">
-            <el-table-column prop="node" label="节点" width="150" />
-            <el-table-column prop="value" label="值" width="150">
+          <el-table :data="diskWriteTableData" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.status === 'normal' ? 'cell-normal' : 'cell-warning') : ''">
+            <el-table-column prop="instance" label="节点" min-width="120" />
+            <el-table-column prop="device" label="设备" min-width="100" />
+            <el-table-column prop="valueFormatted" label="值" width="100" />
+            <el-table-column prop="status" label="状态" width="70">
               <template #default="{ row }">
-                {{ row.value }} 天
-              </template>
-            </el-table-column>
-            <el-table-column prop="status" label="状态" width="100">
-              <template #default="{ row }">
-                {{ row.value >= 30 ? '正常' : '异常' }}
+                {{ row.status === 'normal' ? '正常' : '告警' }}
               </template>
             </el-table-column>
           </el-table>
-          <div class="table-note">说明：值>=30天表示正常，值<30天表示异常</div>
         </el-card>
-      </template>
 
-      <!-- 30分钟内磁盘平均写入值 -->
-      <el-card class="section-card" v-if="diskWriteTableData.length > 0">
-        <template #header>
-          <span class="section-title">30分钟内磁盘平均写入值</span>
-        </template>
-        <el-table :data="diskWriteTableData" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.status === 'normal' ? 'cell-normal' : 'cell-warning') : ''">
-          <el-table-column prop="instance" label="节点" width="150" />
-          <el-table-column prop="device" label="设备" width="150" />
-          <el-table-column prop="valueFormatted" label="值" width="150" />
-          <el-table-column prop="status" label="状态" width="100">
-            <template #default="{ row }">
-              {{ row.status === 'normal' ? '正常' : '告警' }}
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-card>
+        <el-card class="section-card half-width" v-if="diskReadTableData.length > 0">
+          <template #header>
+            <span class="section-title">30分钟内磁盘平均读取值</span>
+          </template>
+          <el-table :data="diskReadTableData" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.status === 'normal' ? 'cell-normal' : 'cell-warning') : ''">
+            <el-table-column prop="instance" label="节点" min-width="120" />
+            <el-table-column prop="device" label="设备" min-width="100" />
+            <el-table-column prop="valueFormatted" label="值" width="100" />
+            <el-table-column prop="status" label="状态" width="70">
+              <template #default="{ row }">
+                {{ row.status === 'normal' ? '正常' : '告警' }}
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-card>
+      </div>
 
-      <!-- 30分钟内磁盘平均读取值 -->
-      <el-card class="section-card" v-if="diskReadTableData.length > 0">
-        <template #header>
-          <span class="section-title">30分钟内磁盘平均读取值</span>
-        </template>
-        <el-table :data="diskReadTableData" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.status === 'normal' ? 'cell-normal' : 'cell-warning') : ''">
-          <el-table-column prop="instance" label="节点" width="150" />
-          <el-table-column prop="device" label="设备" width="150" />
-          <el-table-column prop="valueFormatted" label="值" width="150" />
-          <el-table-column prop="status" label="状态" width="100">
-            <template #default="{ row }">
-              {{ row.status === 'normal' ? '正常' : '告警' }}
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-card>
+      <!-- 网络IO表格（双列布局） -->
+      <div class="dual-column-cards" v-if="networkUploadTableData.length > 0 || networkDownloadTableData.length > 0">
+        <el-card class="section-card half-width" v-if="networkUploadTableData.length > 0">
+          <template #header>
+            <span class="section-title">30分钟内上传速率</span>
+          </template>
+          <el-table :data="networkUploadTableData" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.status === 'normal' ? 'cell-normal' : 'cell-warning') : ''">
+            <el-table-column prop="instance" label="节点" min-width="120" />
+            <el-table-column prop="device" label="设备" min-width="100" />
+            <el-table-column prop="valueFormatted" label="值" width="100" />
+            <el-table-column prop="status" label="状态" width="70">
+              <template #default="{ row }">
+                {{ row.status === 'normal' ? '正常' : '告警' }}
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-card>
 
-      <!-- 30分钟内上传速率 -->
-      <el-card class="section-card" v-if="networkUploadTableData.length > 0">
-        <template #header>
-          <span class="section-title">30分钟内上传速率</span>
-        </template>
-        <el-table :data="networkUploadTableData" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.status === 'normal' ? 'cell-normal' : 'cell-warning') : ''">
-          <el-table-column prop="instance" label="节点" width="150" />
-          <el-table-column prop="device" label="设备" width="150" />
-          <el-table-column prop="valueFormatted" label="值" width="150" />
-          <el-table-column prop="status" label="状态" width="100">
-            <template #default="{ row }">
-              {{ row.status === 'normal' ? '正常' : '告警' }}
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-card>
+        <el-card class="section-card half-width" v-if="networkDownloadTableData.length > 0">
+          <template #header>
+            <span class="section-title">30分钟内下载速率</span>
+          </template>
+          <el-table :data="networkDownloadTableData" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.status === 'normal' ? 'cell-normal' : 'cell-warning') : ''">
+            <el-table-column prop="instance" label="节点" min-width="120" />
+            <el-table-column prop="device" label="设备" min-width="100" />
+            <el-table-column prop="valueFormatted" label="值" width="100" />
+            <el-table-column prop="status" label="状态" width="70">
+              <template #default="{ row }">
+                {{ row.status === 'normal' ? '正常' : '告警' }}
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-card>
+      </div>
 
-      <!-- 30分钟内下载速率 -->
-      <el-card class="section-card" v-if="networkDownloadTableData.length > 0">
-        <template #header>
-          <span class="section-title">30分钟内下载速率</span>
-        </template>
-        <el-table :data="networkDownloadTableData" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.status === 'normal' ? 'cell-normal' : 'cell-warning') : ''">
-          <el-table-column prop="instance" label="节点" width="150" />
-          <el-table-column prop="device" label="设备" width="150" />
-          <el-table-column prop="valueFormatted" label="值" width="150" />
-          <el-table-column prop="status" label="状态" width="100">
-            <template #default="{ row }">
-              {{ row.status === 'normal' ? '正常' : '告警' }}
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-card>
+      <!-- 进程TOP表格（双列布局） -->
+      <div class="dual-column-cards" v-if="processCPUTableData.length > 0 || processMemTableData.length > 0">
+        <el-card class="section-card half-width" v-if="processCPUTableData.length > 0">
+          <template #header>
+            <span class="section-title">进程CPU使用率Top5</span>
+          </template>
+          <el-table :data="processCPUTableData" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.status === 'normal' ? 'cell-normal' : 'cell-warning') : ''">
+            <el-table-column prop="processName" label="进程名" min-width="150" />
+            <el-table-column prop="instance" label="所在机器" min-width="120" />
+            <el-table-column prop="value" label="值" width="80" />
+            <el-table-column prop="status" label="状态" width="70">
+              <template #default="{ row }">
+                {{ row.status === 'normal' ? '正常' : '告警' }}
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-card>
 
-      <!-- 进程CPU使用率Top5 -->
-      <el-card class="section-card" v-if="processCPUTableData.length > 0">
-        <template #header>
-          <span class="section-title">进程CPU使用率Top5</span>
-        </template>
-        <el-table :data="processCPUTableData" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.status === 'normal' ? 'cell-normal' : 'cell-warning') : ''">
-          <el-table-column prop="processName" label="进程名" width="200" />
-          <el-table-column prop="instance" label="所在机器" width="180" />
-          <el-table-column prop="value" label="值" width="120" />
-          <el-table-column prop="status" label="状态" width="100">
-            <template #default="{ row }">
-              {{ row.status === 'normal' ? '正常' : '告警' }}
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-card>
-
-      <!-- 进程内存使用率Top5 -->
-      <el-card class="section-card" v-if="processMemTableData.length > 0">
-        <template #header>
-          <span class="section-title">进程内存使用率Top5</span>
-        </template>
-        <el-table :data="processMemTableData" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.status === 'normal' ? 'cell-normal' : 'cell-warning') : ''">
-          <el-table-column prop="processName" label="进程名" width="200" />
-          <el-table-column prop="instance" label="所在机器" width="180" />
-          <el-table-column prop="value" label="值" width="120" />
-          <el-table-column prop="status" label="状态" width="100">
-            <template #default="{ row }">
-              {{ row.status === 'normal' ? '正常' : '告警' }}
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-card>
+        <el-card class="section-card half-width" v-if="processMemTableData.length > 0">
+          <template #header>
+            <span class="section-title">进程内存使用率Top5</span>
+          </template>
+          <el-table :data="processMemTableData" stripe border size="small" :cell-class-name="({row, column}) => column.property === 'status' ? (row.status === 'normal' ? 'cell-normal' : 'cell-warning') : ''">
+            <el-table-column prop="processName" label="进程名" min-width="150" />
+            <el-table-column prop="instance" label="所在机器" min-width="120" />
+            <el-table-column prop="value" label="值" width="80" />
+            <el-table-column prop="status" label="状态" width="70">
+              <template #default="{ row }">
+                {{ row.status === 'normal' ? '正常' : '告警' }}
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-card>
+      </div>
 
       <!-- 其他分组详情 -->
       <el-card
@@ -324,12 +329,20 @@
             />
           </el-form-item>
           <el-form-item label="备注">
-            <el-input
-              v-model="summaryForm.remark"
-              type="textarea"
-              :rows="3"
-              placeholder="请输入备注信息"
-            />
+            <div class="remark-editor-wrapper">
+              <div class="editor-toolbar">
+                <el-button size="small" @click="insertImage('remark')">插入图片</el-button>
+                <span class="editor-hint">支持 Ctrl+V 粘贴图片</span>
+              </div>
+              <div
+                ref="remarkEditor"
+                class="rich-editor"
+                contenteditable="true"
+                @paste="handlePaste"
+                @input="syncRemarkContent"
+                v-html="summaryForm.remark"
+              ></div>
+            </div>
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="handleSaveSummary">保存总结</el-button>
@@ -358,6 +371,7 @@ const items = ref<InspectionItem[]>([])
 const cpuChart = ref<HTMLElement>()
 const memChart = ref<HTMLElement>()
 const diskChart = ref<HTMLElement>()
+const remarkEditor = ref<HTMLElement>()
 
 const summaryForm = ref({
   summary: '',
@@ -667,6 +681,7 @@ const k8sNodeTableData = computed(() => {
 
 // K8S Pod运行状态表格数据
 // 值=1表示正常，值≠1表示异常
+// 按命名空间排序
 const k8sPodTableData = computed(() => {
   const podItems = items.value.filter(i => 
     isK8SGroup(i.group_name) && 
@@ -674,7 +689,7 @@ const k8sPodTableData = computed(() => {
      i.rule_name.toLowerCase().includes('pod status'))
   )
   
-  return podItems.map(item => {
+  const data = podItems.map(item => {
     const labels = parseLabels(item.labels)
     return {
       namespace: labels.namespace || 'default',
@@ -682,18 +697,22 @@ const k8sPodTableData = computed(() => {
       value: item.value
     }
   })
+  
+  // 按命名空间排序
+  return data.sort((a, b) => a.namespace.localeCompare(b.namespace))
 })
 
 // K8S PVC使用率表格数据
 // 列顺序：PVC名称、命名空间、PVC使用率、状态
 // 值>=90%表示异常
+// 按命名空间排序
 const k8sPVCTableData = computed(() => {
   const pvcItems = items.value.filter(i => 
     isK8SGroup(i.group_name) && 
     (i.rule_name.includes('PVC') || i.rule_name.includes('持久卷') || i.rule_name.toLowerCase().includes('pvc') || i.rule_name.includes('存储卷'))
   )
   
-  return pvcItems.map(item => {
+  const data = pvcItems.map(item => {
     const labels = parseLabels(item.labels)
     return {
       pvc: labels.persistentvolumeclaim || 'unknown',
@@ -701,6 +720,9 @@ const k8sPVCTableData = computed(() => {
       usedPercent: item.value
     }
   })
+  
+  // 按命名空间排序
+  return data.sort((a, b) => a.namespace.localeCompare(b.namespace))
 })
 
 // K8S证书状态表格数据 - 按证书类型分组
@@ -1271,6 +1293,60 @@ const handleSaveSummary = async () => {
   ElMessage.success('保存成功')
 }
 
+// 处理粘贴事件（支持粘贴图片）
+const handlePaste = (e: ClipboardEvent) => {
+  const items = e.clipboardData?.items
+  if (!items) return
+  
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]
+    if (item.type.indexOf('image') !== -1) {
+      e.preventDefault()
+      const file = item.getAsFile()
+      if (file) {
+        const reader = new FileReader()
+        reader.onload = (event) => {
+          const imgHtml = `<img src="${event.target?.result}" alt="粘贴的图片" style="max-width:100%;max-height:300px;margin:5px 0;">`
+          document.execCommand('insertHTML', false, imgHtml)
+          syncRemarkContent()
+        }
+        reader.readAsDataURL(file)
+      }
+      break
+    }
+  }
+}
+
+// 同步富文本内容到form
+const syncRemarkContent = () => {
+  if (remarkEditor.value) {
+    summaryForm.value.remark = remarkEditor.value.innerHTML
+  }
+}
+
+// 插入图片（点击按钮）
+const insertImage = (type: string) => {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = 'image/*'
+  input.onchange = (e: Event) => {
+    const file = (e.target as HTMLInputElement).files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        const imgHtml = `<img src="${event.target?.result}" alt="插入的图片" style="max-width:100%;max-height:300px;margin:5px 0;">`
+        if (remarkEditor.value) {
+          remarkEditor.value.focus()
+          document.execCommand('insertHTML', false, imgHtml)
+          syncRemarkContent()
+        }
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+  input.click()
+}
+
 const getStatusClass = (status?: string) => {
   if (status === 'critical') return 'status-critical'
   if (status === 'warning') return 'status-warning'
@@ -1309,6 +1385,71 @@ onMounted(() => loadReport())
 .rule-section { margin-bottom: 20px; }
 .rule-title { font-weight: bold; margin-bottom: 10px; color: #606266; }
 .table-note { margin-top: 10px; font-size: 12px; color: #909399; }
+
+/* 双列卡片布局 */
+.dual-column-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+.dual-column-cards .section-card.half-width {
+  flex: 1 1 calc(50% - 10px);
+  min-width: 400px;
+  margin-bottom: 0;
+}
+.dual-column-cards .section-card.half-width :deep(.el-card__body) {
+  padding: 15px;
+}
+.dual-column-cards .section-card.half-width :deep(.el-table) {
+  width: 100%;
+}
+.dual-column-cards .section-card.half-width :deep(.el-table__body-wrapper) {
+  width: 100% !important;
+}
+
+/* 富文本编辑器样式 */
+.remark-editor-wrapper {
+  width: 100%;
+}
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding: 5px;
+  background: #f5f7fa;
+  border: 1px solid #dcdfe6;
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+}
+.editor-hint {
+  font-size: 12px;
+  color: #909399;
+}
+.rich-editor {
+  min-height: 120px;
+  padding: 10px;
+  border: 1px solid #dcdfe6;
+  border-radius: 0 0 4px 4px;
+  background: #fff;
+  line-height: 1.6;
+  overflow-y: auto;
+  max-height: 400px;
+}
+.rich-editor:focus {
+  border-color: #409eff;
+  outline: none;
+}
+.rich-editor img {
+  max-width: 100%;
+  max-height: 300px;
+  margin: 5px 0;
+  border-radius: 4px;
+}
+.rich-editor p {
+  margin: 5px 0;
+}
 </style>
 
 <style>
