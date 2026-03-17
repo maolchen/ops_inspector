@@ -458,9 +458,10 @@ interface TableColumn {
   label: string          // 列标题
   width: number          // 列宽度
   order: number          // 列顺序
-  type: 'value' | 'label' // 列类型
+  type: 'value' | 'label' | 'mountpoint' // 列类型：value=规则值, label=从labels提取, mountpoint=挂载点（特殊处理）
   merge: boolean         // 是否参与合并
   unit: string           // 单位
+  isDiskRelated: boolean // 是否与磁盘相关（影响按挂载点查询）
 }
 
 // 判断是否为基础资源分组
@@ -475,6 +476,15 @@ const isBasicResourceGroup = (groupName: string): boolean => {
          lower.includes('基础')
 }
 
+// 判断规则名是否与磁盘相关
+const isDiskRelatedRule = (ruleName: string): boolean => {
+  const lower = ruleName.toLowerCase()
+  return lower.includes('磁盘') || 
+         lower.includes('disk') || 
+         lower.includes('挂载') ||
+         lower.includes('mount')
+}
+
 // 动态表格列配置
 const tableColumns = computed(() => {
   // 只取基础资源分组且 show_in_table 的数据
@@ -482,26 +492,47 @@ const tableColumns = computed(() => {
   
   // 收集所有唯一的列配置
   const columnMap = new Map<string, TableColumn>()
+  let hasDiskRelatedColumn = false
+  let minDiskColumnOrder = Infinity
   
   basicItems.forEach(item => {
-    const key = item.table_column_type === 'label' 
-      ? `label_${item.table_column_label}` 
-      : `value_${item.rule_name}`
+    const key = `value_${item.rule_name}`
+    const isDiskRelated = isDiskRelatedRule(item.rule_name)
+    
+    if (isDiskRelated) {
+      hasDiskRelatedColumn = true
+      if (item.table_column_order < minDiskColumnOrder) {
+        minDiskColumnOrder = item.table_column_order
+      }
+    }
     
     if (!columnMap.has(key)) {
       columnMap.set(key, {
         prop: key,
-        label: item.table_column_type === 'label' 
-          ? item.table_column_label 
-          : item.rule_name,
+        label: item.rule_name,
         width: item.table_column_width || 100,
         order: item.table_column_order || 0,
-        type: item.table_column_type as 'value' | 'label',
+        type: 'value',
         merge: item.table_column_merge,
-        unit: item.unit
+        unit: item.unit,
+        isDiskRelated
       })
     }
   })
+  
+  // 如果有磁盘相关列，自动添加挂载点列（在磁盘列之前）
+  if (hasDiskRelatedColumn) {
+    columnMap.set('mountpoint', {
+      prop: 'mountpoint',
+      label: '挂载点',
+      width: 100,
+      order: minDiskColumnOrder - 1, // 在磁盘列之前
+      type: 'mountpoint',
+      merge: false, // 挂载点不参与合并
+      unit: '',
+      isDiskRelated: true
+    })
+  }
   
   // 按顺序排序
   return Array.from(columnMap.values()).sort((a, b) => a.order - b.order)
@@ -602,36 +633,47 @@ const createBasicRow = (ip: string, data: Record<string, any>, mountpoint: strin
   
   // 根据列配置动态填充数据
   tableColumns.value.forEach(col => {
-    if (col.type === 'label') {
-      // 从 labels 提取
-      if (col.label === 'mountpoint' || col.label === 'device') {
-        // 挂载点/设备列：直接使用传入的 mountpoint 参数
-        row[col.prop] = mountpoint || '-'
-      } else {
-        // 其他 label 列：从数据中提取
-        const firstItem = Object.values(data)[0] as any
-        const labels = firstItem?.labels || {}
-        row[col.prop] = labels[col.label] || '-'
-      }
+    if (col.type === 'mountpoint') {
+      // 挂载点列：直接使用传入的 mountpoint 参数
+      row[col.prop] = mountpoint || '-'
+    } else if (col.type === 'label') {
+      // 其他 label 列：从数据中提取
+      const firstItem = Object.values(data)[0] as any
+      const labels = firstItem?.labels || {}
+      row[col.prop] = labels[col.label] || '-'
     } else {
       // 规则值列
-      const ruleName = col.label // col.label 实际是规则名
-      // 先尝试带挂载点的 key
-      const mpKey = `${ruleName}_${mountpoint}`
-      const item = data[mpKey] || data[ruleName]
+      const ruleName = col.label
       
-      if (item && item.value !== undefined) {
-        row[col.prop] = formatValue(item.value, col.unit)
-        row[`${col.prop}_status`] = item.status
+      if (col.isDiskRelated) {
+        // 磁盘相关列：按挂载点查找数据
+        const mpKey = `${ruleName}_${mountpoint}`
+        const item = data[mpKey]
+        
+        if (item && item.value !== undefined) {
+          row[col.prop] = formatValue(item.value, col.unit)
+          row[`${col.prop}_status`] = item.status
+        } else {
+          row[col.prop] = '-'
+          row[`${col.prop}_status`] = ''
+        }
       } else {
-        row[col.prop] = '-'
-        row[`${col.prop}_status`] = ''
-      }
-      
-      // 非首行的合并列数据清空
-      if (!isFirst && col.merge) {
-        row[col.prop] = ''
-        row[`${col.prop}_status`] = ''
+        // 非磁盘列：按 IP 查找数据（不区分挂载点）
+        const item = data[ruleName]
+        
+        if (item && item.value !== undefined) {
+          // 非首行的合并列显示空，首行显示值
+          if (!isFirst && col.merge) {
+            row[col.prop] = ''
+            row[`${col.prop}_status`] = ''
+          } else {
+            row[col.prop] = formatValue(item.value, col.unit)
+            row[`${col.prop}_status`] = item.status
+          }
+        } else {
+          row[col.prop] = isFirst ? '-' : ''
+          row[`${col.prop}_status`] = ''
+        }
       }
     }
   })

@@ -117,25 +117,10 @@
         <!-- 表格列配置（仅当表格展示开启时显示） -->
         <template v-if="ruleForm.show_in_table">
           <el-divider content-position="left">表格列配置</el-divider>
-          <el-form-item label="列数据来源">
-            <el-radio-group v-model="ruleForm.table_column_type">
-              <el-radio value="value">规则查询值</el-radio>
-              <el-radio value="label">从标签提取</el-radio>
-            </el-radio-group>
-            <div class="form-tip" style="color: #909399; font-size: 12px; margin-top: 4px;">
-              选择"从标签提取"时，该列显示 Prometheus 查询结果中的指定标签值
-            </div>
-          </el-form-item>
-          <el-form-item label="标签键名" v-if="ruleForm.table_column_type === 'label'">
-            <el-input v-model="ruleForm.table_column_label" placeholder="如: mountpoint, device, namespace" />
-            <div class="form-tip" style="color: #909399; font-size: 12px; margin-top: 4px;">
-              指定要从查询结果中提取的标签键名
-            </div>
-          </el-form-item>
           <el-form-item label="列顺序">
             <el-input-number v-model="ruleForm.table_column_order" :min="0" :max="999" />
             <div class="form-tip" style="color: #909399; font-size: 12px; margin-top: 4px;">
-              数字越小越靠前，相同顺序按名称排序
+              数字越小越靠前，相同顺序按名称排序。磁盘相关列会自动在其前面添加"挂载点"列
             </div>
           </el-form-item>
           <el-form-item label="列宽度">
@@ -145,7 +130,7 @@
           <el-form-item label="合并单元格">
             <el-switch v-model="ruleForm.table_column_merge" />
             <div class="form-tip" style="color: #909399; font-size: 12px; margin-top: 4px;">
-              同一 IP 多行数据时是否合并显示（如磁盘挂载点列应关闭）
+              同一 IP 多行数据时是否合并显示。CPU、内存等非磁盘指标建议开启，磁盘相关指标建议关闭
             </div>
           </el-form-item>
         </template>
