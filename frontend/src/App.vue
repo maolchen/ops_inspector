@@ -10,6 +10,7 @@
       <el-container class="app-container">
         <el-aside width="220px" class="sidebar">
           <div class="logo">
+            <img src="/images/logo-guardian.png" alt="Logo" class="logo-icon" />
             <h1>运维巡检平台</h1>
           </div>
           <el-menu
@@ -45,7 +46,9 @@
           <div class="user-panel">
             <el-dropdown trigger="click" @command="handleCommand">
               <div class="user-info">
-                <el-avatar :size="32" icon="User" />
+                <el-avatar :size="32" class="user-avatar">
+                  <img src="/images/avatar-admin.png" alt="avatar" />
+                </el-avatar>
                 <span class="username">{{ authStore.user?.username || '用户' }}</span>
               </div>
               <template #dropdown>
@@ -129,20 +132,30 @@ body {
 }
 
 .logo {
-  height: 60px;
+  height: 64px;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 12px;
   color: hsl(0 0% 98%);
   font-size: 18px;
   font-weight: 600;
   border-bottom: 1px solid hsl(240 5.9% 15%);
-  letter-spacing: -0.025em;
+  padding: 0 16px;
+}
+
+.logo-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 15px rgba(34, 211, 238, 0.2);
 }
 
 .logo h1 {
   font-size: 0.9rem;
   font-weight: 600;
+  letter-spacing: -0.025em;
 }
 
 /* 主内容区域 */
@@ -200,6 +213,19 @@ body {
 .username {
   font-size: 0.875rem;
   font-weight: 500;
+}
+
+/* 用户头像样式 */
+.user-avatar {
+  background: transparent;
+  border: 2px solid hsl(240 5.9% 25%);
+  overflow: hidden;
+}
+
+.user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .el-dropdown-menu__item {
