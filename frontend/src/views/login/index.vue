@@ -158,12 +158,14 @@ async function handleLogin() {
 }
 
 .login-logo {
-  width: 64px;
-  height: 64px;
+  width: 72px;
+  height: 72px;
   margin-bottom: 16px;
   border-radius: 50%;
-  box-shadow: 0 0 30px rgba(34, 211, 238, 0.3);
   object-fit: cover;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 8px;
+  box-shadow: 0 0 40px rgba(34, 211, 238, 0.25);
 }
 
 .title {

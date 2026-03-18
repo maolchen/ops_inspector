@@ -145,11 +145,12 @@ body {
 }
 
 .logo-icon {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   object-fit: cover;
-  box-shadow: 0 0 15px rgba(34, 211, 238, 0.2);
+  background: transparent;
+  filter: brightness(1.1);
 }
 
 .logo h1 {
