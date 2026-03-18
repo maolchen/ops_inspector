@@ -373,22 +373,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.page-container {
-  background: #fff;
-  padding: 20px;
-  border-radius: 4px;
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.page-header h2 {
-  margin: 0;
-}
+/* 页面基础样式由全局 shadcn.css 统一管理 */
 
 .group-header {
   display: flex;
@@ -397,12 +382,13 @@ onMounted(() => {
 }
 
 .group-name {
-  font-weight: bold;
-  font-size: 15px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: hsl(var(--foreground));
 }
 
 .group-desc {
-  color: #666;
-  font-size: 13px;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
 }
 </style>

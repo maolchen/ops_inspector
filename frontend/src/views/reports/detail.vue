@@ -1557,7 +1557,29 @@ onMounted(() => loadReport())
 }
 
 :deep(.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell) {
-  background: hsl(var(--muted) / 0.3) !important;
+  background: hsl(var(--muted) / 0.3);
+}
+
+/* 状态单元格样式 - 必须在斑马纹之后，优先级更高 */
+:deep(.el-table td.el-table__cell.cell-normal),
+:deep(.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell.cell-normal) {
+  background-color: hsl(142 76% 36% / 0.15) !important;
+  color: hsl(142 76% 36%) !important;
+  font-weight: 600;
+}
+
+:deep(.el-table td.el-table__cell.cell-warning),
+:deep(.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell.cell-warning) {
+  background-color: hsl(38 92% 50% / 0.15) !important;
+  color: hsl(38 92% 50%) !important;
+  font-weight: 600;
+}
+
+:deep(.el-table td.el-table__cell.cell-critical),
+:deep(.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell.cell-critical) {
+  background-color: hsl(0 84% 60% / 0.15) !important;
+  color: hsl(0 84% 60%) !important;
+  font-weight: 600;
 }
 
 /* 按钮样式调整 */
@@ -1602,23 +1624,3 @@ onMounted(() => loadReport())
 }
 </style>
 
-<style>
-/* 状态单元格背景色样式 - 更柔和的颜色 */
-.cell-normal {
-  background-color: hsl(142 76% 36% / 0.1) !important;
-  color: hsl(142 76% 36%) !important;
-  font-weight: 600;
-}
-
-.cell-warning {
-  background-color: hsl(38 92% 50% / 0.1) !important;
-  color: hsl(38 92% 50%) !important;
-  font-weight: 600;
-}
-
-.cell-critical {
-  background-color: hsl(0 84% 60% / 0.1) !important;
-  color: hsl(0 84% 60%) !important;
-  font-weight: 600;
-}
-</style>

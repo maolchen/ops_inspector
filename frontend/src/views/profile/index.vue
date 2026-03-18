@@ -142,17 +142,5 @@ const handleChangePassword = async () => {
 </script>
 
 <style scoped>
-.page-container {
-  background: #fff;
-  padding: 20px;
-  border-radius: 4px;
-}
-
-.page-header {
-  margin-bottom: 20px;
-}
-
-.page-header h2 {
-  margin: 0;
-}
+/* 页面样式由全局 shadcn.css 统一管理 */
 </style>

@@ -101,23 +101,11 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.page-container {
-  background: #fff;
-  padding: 20px;
-  border-radius: 4px;
-}
-
-.page-header {
-  margin-bottom: 20px;
-}
-
-.page-header h2 {
-  margin: 0;
-}
+/* 页面样式由全局 shadcn.css 统一管理 */
 
 .form-tip {
   margin-left: 10px;
-  color: #999;
-  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
 }
 </style>

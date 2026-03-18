@@ -83,27 +83,31 @@ async function handleLogin() {
 </script>
 
 <style scoped>
+/* 登录页面 - Shadcn 风格 */
 .login-container {
   height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.1) 0%, hsl(var(--muted)) 100%);
 }
 
 .login-box {
   width: 400px;
   padding: 40px;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  background: hsl(var(--background));
+  border-radius: var(--radius);
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  border: 1px solid hsl(var(--border));
 }
 
 .title {
   text-align: center;
-  font-size: 24px;
-  color: #303133;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
   margin-bottom: 30px;
+  letter-spacing: -0.025em;
 }
 
 .login-form {

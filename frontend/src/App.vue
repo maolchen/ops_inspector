@@ -112,18 +112,20 @@ async function handleCommand(command: string) {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
 .app-container {
   height: 100vh;
 }
 
+/* 侧边栏 - Shadcn 深色风格 */
 .sidebar {
-  background-color: #304156;
+  background: linear-gradient(180deg, hsl(240 5.9% 10%) 0%, hsl(240 6% 7%) 100%);
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
+  border-right: 1px solid hsl(240 5.9% 15%);
 }
 
 .logo {
@@ -131,55 +133,97 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: hsl(0 0% 98%);
   font-size: 18px;
-  font-weight: bold;
-  border-bottom: 1px solid #3a4a5e;
+  font-weight: 600;
+  border-bottom: 1px solid hsl(240 5.9% 15%);
+  letter-spacing: -0.025em;
 }
 
 .logo h1 {
-  font-size: 16px;
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
+/* 主内容区域 */
 .main-content {
-  background-color: #f0f2f5;
-  padding: 20px;
+  background: hsl(var(--muted));
+  padding: 24px;
   overflow-y: auto;
 }
 
+/* 侧边栏菜单样式 */
 .el-menu {
   border-right: none;
   flex: 1;
+  background: transparent !important;
 }
 
+.el-menu-item {
+  margin: 4px 8px;
+  border-radius: calc(var(--radius) - 4px) !important;
+  transition: all 0.2s ease !important;
+}
+
+.el-menu-item:hover {
+  background-color: hsl(240 5.9% 20%) !important;
+}
+
+.el-menu-item.is-active {
+  background-color: hsl(var(--primary) / 0.2) !important;
+  color: hsl(0 0% 98%) !important;
+}
+
+/* 用户面板 */
 .user-panel {
-  padding: 15px;
-  border-top: 1px solid #3a4a5e;
-  background-color: #263445;
+  padding: 16px;
+  border-top: 1px solid hsl(240 5.9% 15%);
+  background: transparent;
 }
 
 .user-info {
   display: flex;
   align-items: center;
-  gap: 10px;
-  color: #bfcbd9;
+  gap: 12px;
+  color: hsl(240 5% 64.9%);
   cursor: pointer;
-  padding: 8px;
-  border-radius: 4px;
-  transition: background-color 0.3s;
+  padding: 10px;
+  border-radius: calc(var(--radius) - 4px);
+  transition: all 0.2s ease;
 }
 
 .user-info:hover {
-  background-color: #304156;
+  background-color: hsl(240 5.9% 15%);
+  color: hsl(0 0% 98%);
 }
 
 .username {
-  font-size: 14px;
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
 .el-dropdown-menu__item {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* 下拉菜单样式 */
+.el-dropdown-menu {
+  border-radius: var(--radius) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1) !important;
+  padding: 4px !important;
+}
+
+.el-dropdown-menu__item {
+  border-radius: calc(var(--radius) - 4px) !important;
+  margin: 2px !important;
+  padding: 8px 12px !important;
+}
+
+.el-dropdown-menu__item:hover {
+  background-color: hsl(var(--muted)) !important;
+  color: hsl(var(--foreground)) !important;
 }
 </style>
