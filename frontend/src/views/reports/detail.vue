@@ -202,7 +202,8 @@
                 contenteditable="true"
                 @paste="handlePaste"
                 @input="syncRemarkContent"
-                v-html="summaryForm.remark"
+                @compositionstart="handleCompositionStart"
+                @compositionend="handleCompositionEnd"
               ></div>
             </div>
           </el-form-item>
@@ -234,6 +235,9 @@ const cpuChart = ref<HTMLElement>()
 const memChart = ref<HTMLElement>()
 const diskChart = ref<HTMLElement>()
 const remarkEditor = ref<HTMLElement>()
+
+// 输入法组合状态标志
+const isComposing = ref(false)
 
 const summaryForm = ref({
   summary: '',
@@ -865,6 +869,10 @@ const loadReport = async () => {
     
     nextTick(() => {
       renderCharts()
+      // 初始化富文本编辑器内容
+      if (remarkEditor.value) {
+        remarkEditor.value.innerHTML = summaryForm.value.remark
+      }
     })
   } finally {
     loading.value = false
@@ -1194,8 +1202,22 @@ const handlePaste = (e: ClipboardEvent) => {
   }
 }
 
+// 处理输入法组合开始
+const handleCompositionStart = () => {
+  isComposing.value = true
+}
+
+// 处理输入法组合结束
+const handleCompositionEnd = () => {
+  isComposing.value = false
+  // 组合结束后同步内容
+  syncRemarkContent()
+}
+
 // 同步富文本内容到form
 const syncRemarkContent = () => {
+  // 如果正在进行输入法组合，不触发同步
+  if (isComposing.value) return
   if (remarkEditor.value) {
     summaryForm.value.remark = remarkEditor.value.innerHTML
   }
