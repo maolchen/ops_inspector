@@ -1241,36 +1241,188 @@ onMounted(() => loadReport())
 </script>
 
 <style scoped>
-.page-container { background: #fff; padding: 20px; border-radius: 4px; }
-.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-.page-header h2 { margin: 0; }
-.section-card { margin-bottom: 20px; }
-.section-title { font-weight: bold; font-size: 16px; }
-.overview-cards { display: flex; flex-wrap: wrap; gap: 20px; }
-.overview-card { flex: 1; min-width: 200px; padding: 15px; border: 1px solid #ebeef5; border-radius: 4px; background: #fafafa; }
-.card-title { font-weight: bold; margin-bottom: 10px; font-size: 14px; }
-.card-stats { display: flex; gap: 15px; }
-.stat-item { display: flex; flex-direction: column; align-items: center; }
-.stat-label { font-size: 12px; color: #999; }
-.stat-value { font-size: 20px; font-weight: bold; }
-.stat-value.critical { color: #F56C6C; }
-.stat-value.warning { color: #E6A23C; }
-.stat-value.normal { color: #67C23A; }
-.trend-charts { display: flex; flex-wrap: wrap; gap: 20px; }
-.chart-container { flex: 1; min-width: 300px; }
-.chart { width: 100%; height: 300px; }
-.rule-section { margin-bottom: 20px; }
-.rule-title { font-weight: bold; margin-bottom: 10px; color: #606266; }
-.table-note { margin-top: 10px; font-size: 12px; color: #909399; }
+/* ==================== Shadcn-style UI ==================== */
 
-/* 分组标题 */
+/* 页面容器 - 更现代的背景和阴影 */
+.page-container {
+  background: hsl(var(--background));
+  padding: 24px;
+  border-radius: var(--radius);
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  min-height: calc(100vh - 48px);
+}
+
+/* 页面头部 - 更优雅的排版 */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.page-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: hsl(var(--foreground));
+}
+
+/* 卡片样式 - 更柔和的阴影和圆角 */
+.section-card {
+  margin-bottom: 20px;
+  border-radius: var(--radius) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05) !important;
+  transition: box-shadow 0.2s ease;
+}
+
+.section-card:hover {
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1) !important;
+}
+
+.section-card :deep(.el-card__header) {
+  padding: 16px 20px;
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+}
+
+.section-card :deep(.el-card__body) {
+  padding: 20px;
+  background: hsl(var(--card));
+}
+
+/* 区块标题 - 更精致的样式 */
+.section-title {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: hsl(var(--foreground));
+  letter-spacing: -0.01em;
+}
+
+/* 概览卡片 - 现代化的统计卡片 */
+.overview-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.overview-card {
+  flex: 1;
+  min-width: 200px;
+  padding: 20px;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--muted) / 0.5) 100%);
+  transition: all 0.2s ease;
+}
+
+.overview-card:hover {
+  border-color: hsl(var(--primary) / 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.08);
+}
+
+.card-title {
+  font-weight: 600;
+  margin-bottom: 12px;
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.card-stats {
+  display: flex;
+  gap: 20px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  font-weight: 500;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-value.critical {
+  color: hsl(var(--danger));
+}
+
+.stat-value.warning {
+  color: hsl(var(--warning));
+}
+
+.stat-value.normal {
+  color: hsl(var(--success));
+}
+
+/* 趋势图表区域 */
+.trend-charts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.chart-container {
+  flex: 1;
+  min-width: 300px;
+  padding: 16px;
+  background: hsl(var(--muted) / 0.3);
+  border-radius: calc(var(--radius) - 4px);
+}
+
+.chart {
+  width: 100%;
+  height: 280px;
+}
+
+/* 规则区块 */
+.rule-section {
+  margin-bottom: 20px;
+}
+
+.rule-title {
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: hsl(var(--foreground));
+  font-size: 0.875rem;
+}
+
+.table-note {
+  margin-top: 12px;
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  padding: 8px 12px;
+  background: hsl(var(--muted) / 0.5);
+  border-radius: calc(var(--radius) - 4px);
+}
+
+/* 分组标题 - 更现代的徽章风格 */
 .group-section-header {
-  font-size: 16px;
-  font-weight: bold;
-  color: #303133;
-  margin: 20px 0 15px 0;
-  padding-left: 10px;
-  border-left: 4px solid #409EFF;
+  font-size: 1rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  margin: 24px 0 16px 0;
+  padding: 8px 16px;
+  background: linear-gradient(90deg, hsl(var(--primary) / 0.1) 0%, transparent 100%);
+  border-left: 3px solid hsl(var(--primary));
+  border-radius: 0 var(--radius) var(--radius) 0;
+  letter-spacing: -0.01em;
 }
 
 /* 双列卡片布局 */
@@ -1280,17 +1432,21 @@ onMounted(() => loadReport())
   gap: 20px;
   margin-bottom: 20px;
 }
+
 .dual-column-cards .section-card.half-width {
   flex: 1 1 calc(50% - 10px);
   min-width: 400px;
   margin-bottom: 0;
 }
+
 .dual-column-cards .section-card.half-width :deep(.el-card__body) {
-  padding: 15px;
+  padding: 16px;
 }
+
 .dual-column-cards .section-card.half-width :deep(.el-table) {
   width: 100%;
 }
+
 .dual-column-cards .section-card.half-width :deep(.el-table__body-wrapper) {
   width: 100% !important;
 }
@@ -1299,86 +1455,170 @@ onMounted(() => loadReport())
 .triple-column-cards {
   display: flex;
   flex-wrap: wrap;
-  gap: 15px;
+  gap: 16px;
   margin-bottom: 20px;
 }
+
 .triple-column-cards .section-card.third-width {
-  flex: 1 1 calc(33.33% - 10px);
+  flex: 1 1 calc(33.33% - 11px);
   min-width: 280px;
   margin-bottom: 0;
 }
+
 .triple-column-cards .section-card.third-width :deep(.el-card__body) {
   padding: 12px;
 }
+
 .triple-column-cards .section-card.third-width :deep(.el-table) {
   width: 100%;
 }
+
 .triple-column-cards .section-card.third-width :deep(.el-table th) {
-  padding: 6px 0;
+  padding: 8px 0;
+  background: hsl(var(--muted) / 0.5) !important;
 }
+
 .triple-column-cards .section-card.third-width :deep(.el-table td) {
-  padding: 6px 0;
+  padding: 8px 0;
 }
 
 /* 富文本编辑器样式 */
 .remark-editor-wrapper {
   width: 100%;
 }
+
 .editor-toolbar {
   display: flex;
   align-items: center;
   gap: 10px;
   margin-bottom: 8px;
-  padding: 5px;
-  background: #f5f7fa;
-  border: 1px solid #dcdfe6;
+  padding: 8px 12px;
+  background: hsl(var(--muted) / 0.5);
+  border: 1px solid hsl(var(--border));
   border-bottom: none;
-  border-radius: 4px 4px 0 0;
+  border-radius: var(--radius) var(--radius) 0 0;
 }
+
 .editor-hint {
-  font-size: 12px;
-  color: #909399;
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
 }
+
 .rich-editor {
   min-height: 120px;
-  padding: 10px;
-  border: 1px solid #dcdfe6;
-  border-radius: 0 0 4px 4px;
-  background: #fff;
+  padding: 12px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0 0 var(--radius) var(--radius);
+  background: hsl(var(--background));
   line-height: 1.6;
   overflow-y: auto;
   max-height: 400px;
+  color: hsl(var(--foreground));
 }
+
 .rich-editor:focus {
-  border-color: #409eff;
+  border-color: hsl(var(--ring));
   outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
 }
+
 .rich-editor img {
   max-width: 100%;
   max-height: 300px;
-  margin: 5px 0;
-  border-radius: 4px;
+  margin: 8px 0;
+  border-radius: var(--radius);
 }
+
 .rich-editor p {
-  margin: 5px 0;
+  margin: 8px 0;
+}
+
+/* 表格整体样式 - 更现代的外观 */
+:deep(.el-table) {
+  --el-table-border-color: hsl(var(--border));
+  --el-table-header-bg-color: hsl(var(--muted) / 0.5);
+  --el-table-row-hover-bg-color: hsl(var(--muted) / 0.5);
+  border-radius: var(--radius) !important;
+  overflow: hidden;
+}
+
+:deep(.el-table th.el-table__cell) {
+  background: hsl(var(--muted) / 0.5) !important;
+  color: hsl(var(--foreground));
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+:deep(.el-table td.el-table__cell) {
+  color: hsl(var(--foreground));
+  font-size: 0.875rem;
+}
+
+:deep(.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell) {
+  background: hsl(var(--muted) / 0.3) !important;
+}
+
+/* 按钮样式调整 */
+:deep(.el-button) {
+  --el-button-bg-color: hsl(var(--primary));
+  --el-button-border-color: hsl(var(--primary));
+  --el-button-text-color: hsl(var(--primary-foreground));
+  --el-button-hover-bg-color: hsl(var(--primary) / 0.9);
+  --el-button-hover-border-color: hsl(var(--primary) / 0.9);
+  border-radius: calc(var(--radius) - 2px);
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+:deep(.el-button--default) {
+  --el-button-bg-color: hsl(var(--background));
+  --el-button-border-color: hsl(var(--border));
+  --el-button-text-color: hsl(var(--foreground));
+  --el-button-hover-bg-color: hsl(var(--muted));
+  --el-button-hover-border-color: hsl(var(--border));
+}
+
+/* 表单元素样式 */
+:deep(.el-input__wrapper) {
+  border-radius: calc(var(--radius) - 2px);
+  box-shadow: 0 0 0 1px hsl(var(--border));
+  transition: all 0.2s ease;
+}
+
+:deep(.el-input__wrapper:hover) {
+  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.5);
+}
+
+:deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 2px hsl(var(--ring));
+}
+
+/* 加载状态 */
+:deep(.el-loading-mask) {
+  background-color: hsl(var(--background) / 0.8);
+  backdrop-filter: blur(2px);
 }
 </style>
 
 <style>
-/* 状态单元格背景色样式 */
-.cell-normal { 
-  background-color: #f0f9eb !important; 
-  color: #67C23A !important; 
-  font-weight: bold;
+/* 状态单元格背景色样式 - 更柔和的颜色 */
+.cell-normal {
+  background-color: hsl(142 76% 36% / 0.1) !important;
+  color: hsl(142 76% 36%) !important;
+  font-weight: 600;
 }
-.cell-warning { 
-  background-color: #fdf6ec !important; 
-  color: #E6A23C !important; 
-  font-weight: bold;
+
+.cell-warning {
+  background-color: hsl(38 92% 50% / 0.1) !important;
+  color: hsl(38 92% 50%) !important;
+  font-weight: 600;
 }
-.cell-critical { 
-  background-color: #fef0f0 !important; 
-  color: #F56C6C !important; 
-  font-weight: bold;
+
+.cell-critical {
+  background-color: hsl(0 84% 60% / 0.1) !important;
+  color: hsl(0 84% 60%) !important;
+  font-weight: 600;
 }
 </style>
